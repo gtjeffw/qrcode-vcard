@@ -1,154 +1,167 @@
 # QR VCard Share
 
-**Show your contact card as a QR code that anyone can scan with their phone's camera, or send it as a
-contact file, with exactly the details you choose.**
+QR VCard Share is an Apple Shortcut that encodes a contact card as a vCard 3.0 QR code for on-screen
+display, or exports it as a `.vcf` file through the system share sheet. The fields and entries
+included are determined by user-defined sharing profiles. It is written in
+[Cherri](https://cherrilang.org) and compiled to a signed Shortcuts file.
+
+**Install:** [QR VCard Share on iCloud](https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181)
+(opens in the Shortcuts app on iPhone, iPad or Mac)
 
 <p align="center">
-  <a href="https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181">
-    <img alt="Get the shortcut" src="https://img.shields.io/badge/Get%20the%20shortcut-iCloud-F48024?style=for-the-badge&logo=apple&logoColor=white">
-  </a>
-  <br>
-  <sub>Opens in the Shortcuts app on iPhone, iPad or Mac</sub>
-</p>
-
-<p align="center">
-  <img src="docs/images/card-burdell.png" width="300" alt="George P. Burdell's card: QR code above his name, title, Georgia Tech, work and mobile numbers and work email">
+  <img src="docs/images/card-burdell.png" width="300" alt="Example card for George P. Burdell under a Business profile: QR code above name, title, organization, work and mobile numbers and work email">
   &nbsp;&nbsp;
-  <img src="docs/images/card-doe.png" width="300" alt="Jane Doe's card: QR code above her name, mobile and Lab numbers, home email, home address and birthday">
+  <img src="docs/images/card-doe.png" width="300" alt="Example card for Jane Doe under a Personal profile: QR code above name, mobile and Lab numbers, home email, home address and birthday">
 </p>
+<p align="center"><sub>Example output for two fictitious contacts under the Business and Personal profiles.</sub></p>
 
-Meeting someone? Pick **Show my QR VCard**, choose how much to share, and hold up your phone. They
-point their camera at the code and tap to save you as a contact, with every number and email under
-the right label. No app needed on their side, and nothing you didn't pick is included.
+## Features
 
-## What it does
+- **Display.** Renders a contact as a QR code with the encoded details printed below it, so the
+  person sharing and the person scanning see the same information. The QR code is scannable with a
+  phone's built-in camera; no app is required on the receiving device.
+- **Export.** Produces a `.vcf` file for the share sheet (Messages, AirDrop, Mail, etc.). A
+  plain-text preview of the file's complete contents is shown for confirmation first.
+- **Profiles.** Named profiles specify which categories of information to include and, for phone
+  numbers, email addresses and postal addresses, which entries by their Contacts label. Profiles can
+  be added, edited, renamed and deleted.
+- **Label preservation.** Entries keep their Contacts types (mobile, work, home) and custom labels in
+  the exported vCard, so the recipient's address book files them under the same labels.
+- **Minimal prompting.** The user is prompted only when a contact has entries in a category but none
+  match the profile. The choice is retained per contact and profile for later runs.
 
-- **Show** your card, or anyone's from your contacts, as a QR code with the same details written
-  underneath, so you both see exactly what's in it.
-- **Share** a card as a contact file through Messages, AirDrop, Mail and the rest, after showing you
-  the full list of what will be sent.
-- **Profiles** decide what goes in: Business might be your work number and email with your job
-  title; Personal your mobile, home email and address. Add, edit, rename and delete them.
-- **Labels, not guesswork.** Profiles pick phone numbers, emails and addresses by their labels in
-  Contacts (mobile, work, home, your own custom labels, or the one marked primary), so the same
-  profile works for anyone's card.
-- **Asks only when it has to.** If a card has nothing matching a profile, you choose once and the
-  shortcut remembers your choice for that person.
+## Requirements
 
-## Install
+- iOS, iPadOS or macOS with the Shortcuts app. Tested on iOS 26 and macOS 26.
+- iCloud Drive enabled. Settings are stored in the Shortcuts folder in iCloud Drive.
+- Access to Contacts, granted when Shortcuts first requests it.
 
-1. Open the **Get the shortcut** link above on your iPhone, iPad or Mac and tap **Add Shortcut**.
+## Installation
 
-   <img src="docs/images/install.png" width="260" alt="Shortcuts' Add Shortcut screen for QR VCard Share">
+1. Open the [iCloud link](https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181) on the
+   target device and select **Add Shortcut**.
 
-2. Run **QR VCard Share** and choose **Set your Identity**, then pick your own contact card.
+   <img src="docs/images/install.png" width="260" alt="The Shortcuts import screen for QR VCard Share">
 
-You need the Shortcuts app and **iCloud Drive turned on**, because the shortcut keeps your settings
-in the Shortcuts folder there. It has been tested on iOS 26 and macOS 26.
+2. Run the shortcut and select **Set your Identity**, then choose your own contact card.
 
-The first time it reads or saves its settings, Shortcuts asks for permission; choose **Always
-Allow** so it stops asking.
+On first use, Shortcuts requests permission to read and write files in iCloud Drive and to save
+contact data to a file. Selecting **Always Allow** reduces subsequent prompts; see
+[Known limitations](#known-limitations).
 
-## Using it
+## Usage
 
 <p>
   <img src="docs/images/menu.png" width="240" alt="The main menu">
-  <img src="docs/images/profile-choice.png" width="240" alt="Choosing a profile">
-  <img src="docs/images/card-on-phone.png" width="240" alt="George P. Burdell's QR card on an iPhone">
+  <img src="docs/images/profile-choice.png" width="240" alt="The profile list">
+  <img src="docs/images/card-on-phone.png" width="240" alt="An example card displayed on an iPhone">
 </p>
 
-| Menu item | What happens |
+| Menu item | Function |
 |---|---|
-| **Show my QR VCard** | Choose a profile and your card appears as a QR code, ready to scan. |
-| **Show a contact's QR VCard** | Same, for someone in your contacts. |
-| **Share my VCard** | Shows the details that will be sent, then opens the share sheet with a contact file. |
-| **Share a contact's VCard** | Same, for someone in your contacts. |
-| **Set your Identity** | Picks your own card. Run it again after you edit your card in Contacts. |
-| **Manage profiles** | Add, edit, rename or delete profiles. |
+| Show my QR VCard | Displays the user's card as a QR code under the selected profile. |
+| Show a contact's QR VCard | Displays a selected contact's card as a QR code under the selected profile. |
+| Share my VCard | Previews, then exports the user's card as a `.vcf` file. |
+| Share a contact's VCard | Previews, then exports a selected contact's card as a `.vcf` file. |
+| Set your Identity | Stores a copy of the user's own contact card. Re-run after editing that card. |
+| Manage profiles | Adds, edits, renames or deletes profiles. |
 
 ### Profiles
 
-The first run sets up four profiles to start from:
+Four profiles are created on first run:
 
-| Profile | Includes |
+| Profile | Included information |
 |---|---|
-| Business | Company, job title, department, work phone and work email |
-| Personal | Mobile, home email, home address and birthday |
-| Cell only | Just the mobile number |
-| Everything | Every detail on the card |
+| Business | Company, job title, department, work phone, work email |
+| Personal | Mobile phone, home email, home address, birthday |
+| Cell only | Mobile phone |
+| Everything | All supported fields and entries |
 
-Editing a profile asks two things: which categories to include (company, job title, department,
-birthday, phone numbers, email addresses, addresses), and then, for phone numbers, emails and
-addresses, which labels:
+Editing a profile takes two steps. The first selects categories: company, job title, department,
+birthday, phone numbers, email addresses and addresses. The second selects, for each of the last
+three, which labels to include:
 
-- **Phone numbers:** primary, all, mobile, iPhone, work, home, main, pager, other
-- **Emails and addresses:** primary, all, home, work, other
-- **Custom labels** on your own card, such as "Lab" or "school"
+| Category | Available labels |
+|---|---|
+| Phone numbers | primary, all, mobile, iPhone, work, home, main, pager, other |
+| Email addresses | primary, all, home, work, other |
+| Addresses | primary, all, home, work, other |
 
-"Primary" is the entry Contacts marks as preferred. If a card has two entries with the same label,
-both are included; choose primary to get just one.
+Custom labels present on the user's own card (for example "Lab") are offered as additional options.
+"Primary" refers to the entry Contacts marks as preferred. An entry is included if it matches any
+selected label, so two entries with the same label are both included.
 
 <p>
-  <img src="docs/images/profile-categories.png" width="240" alt="Choosing which categories a profile includes">
-  <img src="docs/images/profile-edit.png" width="240" alt="Choosing which phone labels a profile includes">
+  <img src="docs/images/profile-categories.png" width="240" alt="Selecting the categories a profile includes">
+  <img src="docs/images/profile-edit.png" width="240" alt="Selecting the phone labels a profile includes">
 </p>
 
-### When it asks
+### Selection behavior
 
-The shortcut goes straight to the card when the profile decides everything. It asks only when a card
-has entries in a category but none match the profile, for example someone with no mobile number under
-Cell only. Your answer is remembered for that person and profile, so it doesn't ask again. It asks
-again for a category only if you change that category's labels in the profile. To choose by hand for
-one share, pick **Pick items manually…** in the profile list.
+For a given contact and profile:
 
-Missing details are simply left out: no address, no birthday, no department, no problem.
+- **Single-value fields:** company, job title, department and birthday are included when selected
+  in the profile and present on the card. Absent fields are omitted without a prompt.
+- **Phone numbers, emails and addresses:** entries whose labels match the profile are included
+  without a prompt.
+- **No match:** if the card has entries in a category but none match, the user selects the entries
+  to include. The selection is retained for that contact and profile.
+- **Changed labels:** a retained selection is discarded for a category when that category's labels
+  are later changed in the profile, and the user is prompted again for that category only.
+- **Manual selection:** **Pick items manually…** in the profile list prompts for every category and
+  replaces any retained selections.
 
-### Before sharing
+### Export preview
 
-**Share** always shows the complete list of what the contact file contains, with **OK** and
-**Cancel**, so nothing goes out by accident. **Show** needs no preview: the card's text matches its QR
-code exactly.
+Before a `.vcf` file is exported, the shortcut displays its complete contents in plain text with
+**OK** and **Cancel**. The display mode needs no separate preview because the printed text matches
+the encoded QR code.
 
-<img src="docs/images/share-preview.png" width="260" alt="The preview of what will be shared, with OK and Cancel">
+<img src="docs/images/share-preview.png" width="260" alt="The export preview with OK and Cancel">
 
-## Privacy
+## Data storage and privacy
 
-- Everything stays on your devices and your iCloud Drive. The shortcut never sends anything anywhere
-  unless you choose **Share**.
-- Its settings are in the Shortcuts folder in iCloud Drive, under `QRVCard/`: a copy of your own card
-  (from Set your Identity), your profiles, and remembered choices.
-- Remembered choices never contain anyone's details: people are identified by a one-way hash of their
-  name, and choices are hashes of the chosen entries. Phone numbers are few enough that a determined
-  person with the file could work them out, so think of this as keeping details out of plain sight.
-- When you show or share someone else's card, the shortcut briefly writes it to a scratch file to read
-  it, then blanks that file straight away.
+The shortcut stores data only in the Shortcuts folder in the user's iCloud Drive, under `QRVCard/`,
+which iCloud syncs across the user's devices. It sends contact data to other apps or people only
+when the user confirms an export.
 
-## Questions
+| Path | Contents |
+|---|---|
+| `identity.vcf` | Copy of the user's own contact card, written by Set your Identity. |
+| `profiles/order.txt` | Profile identifiers, in menu order. |
+| `profiles/<id>.json` | One profile: name, categories and label selectors. |
+| `cache/<profile id>/<contact hash>.json` | Retained selections for one contact and profile. |
+| `picked_contact.vcf` | Temporary copy used to read a selected contact; cleared immediately after use. |
 
-**Shortcuts asks for permission again and again.** Choose **Always Allow** when it asks about iCloud
-Drive or sharing data with another app; you can change this later in the shortcut's settings. The
-prompt about saving a contact to a file can still come back for a contact it hasn't seen before:
-that's the step that reads the contact's details, and Shortcuts asks per contact.
+Retained selections do not contain contact details. Contacts are identified by a SHA-256 hash of
+their vCard name field, and selections are stored as SHA-256 hashes of the chosen vCard lines.
+Because the space of phone numbers is small, these hashes can be reversed by exhaustive search and
+should be regarded as obfuscation rather than encryption.
 
-<img src="docs/images/permission.png" width="240" alt="Shortcuts asking to allow QR VCard Share to save a contact to a file">
+## Known limitations
 
-**It stopped with "Location doesn't exist".** iCloud Drive is off. Turn it on in Settings > your name >
-iCloud > iCloud Drive.
+- **iCloud Drive is required.** Without it the shortcut stops with "Location doesn't exist". The
+  key-value storage actions introduced in iOS/macOS 27 may remove this requirement in a later
+  version.
+- **Identity is a snapshot.** Edits to the user's own contact card take effect after Set your
+  Identity is run again.
+- **Repeated permission prompts.** Shortcuts may request permission to save contact data to a file
+  for each contact not previously processed, even after **Always Allow** is selected.
 
-**I edited my contact card but the old details show.** Run **Set your Identity** again; the shortcut
-keeps a copy of your card.
+  <img src="docs/images/permission.png" width="240" alt="The Shortcuts prompt to save a contact to a file">
 
-**Updating the shortcut added a second copy.** Shortcuts' **Replace** button adds a copy instead of
-replacing on iOS 26 and macOS 26. Delete the old **QR VCard Share** first, then add the new one. Your
-profiles and settings are kept.
+- **Updating the shortcut.** On iOS 26 and macOS 26, the **Replace** option in the Shortcuts import
+  dialog adds a second copy instead of replacing the existing one. Delete the existing shortcut
+  before adding a new version. Stored settings are unaffected.
 
 ## Building from source
 
-The shortcut is written in [Cherri](https://cherrilang.org), a language that compiles to Apple
-Shortcuts, plus a few fixes to Cherri kept here as patches. See
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for building, testing and how it works.
+The shortcut is compiled with a patched build of Cherri. Build, test and release procedures, the
+source layout and a list of Shortcuts and Cherri behaviors the implementation works around are
+documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## License
 
-[MIT](LICENSE), except the Cherri patches in [patches/cherri/](patches/cherri/), which are GPL-2.0 like
-Cherri itself.
+Released under the [MIT License](LICENSE), with the exception of the Cherri patches in
+[patches/cherri/](patches/cherri/), which are licensed under GPL-2.0 in accordance with Cherri's
+license.
