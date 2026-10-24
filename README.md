@@ -167,7 +167,7 @@ documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Author
 
-Jeffrey Wilson ([@gtjeffw](https://github.com/gtjeffw)), Georgia Institute of Technology
+Jeff Wilson ([@gtjeffw](https://github.com/gtjeffw)), Georgia Institute of Technology
 
 ## License
 
