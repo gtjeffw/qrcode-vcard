@@ -1,0 +1,44 @@
+From 9e03dab458f9e894d8da7b04287eec72f2231dac Mon Sep 17 00:00:00 2001
+From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 09:10:09 -0400
+Subject: [PATCH 3/3] Add Email Addresses and Phone Numbers contact details
+
+Get Details of Contacts supports both properties, but the contactDetail
+enum did not list them. Add a compile-only test.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ actions/contacts.cherri | 2 ++
+ tests/contacts.cherri   | 7 +++++++
+ 2 files changed, 9 insertions(+)
+ create mode 100644 tests/contacts.cherri
+
+diff --git a/actions/contacts.cherri b/actions/contacts.cherri
+index 3d27c8e..23fe90d 100644
+--- a/actions/contacts.cherri
++++ b/actions/contacts.cherri
+@@ -16,6 +16,8 @@ enum contactDetail {
+  'Company',
+  'Job Title',
+  'Department',
++ 'Email Addresses',
++ 'Phone Numbers',
+  'File Extension',
+  'Creation Date',
+  'File Path',
+diff --git a/tests/contacts.cherri b/tests/contacts.cherri
+new file mode 100644
+index 0000000..c79428a
+--- /dev/null
++++ b/tests/contacts.cherri
+@@ -0,0 +1,7 @@
++// compile-only: selecting a contact is interactive, not behaviorally assertable
++
++const contact = selectContact()
++const emails = getContactDetail(contact, "Email Addresses")
++const phones = getContactDetail(contact, "Phone Numbers")
++
++show("✅ All tests passed")
+-- 
+2.50.1 (Apple Git-155)
+

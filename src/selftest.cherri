@@ -1,0 +1,38 @@
+// Made-up contacts and profiles for the self-tests, chosen by the shortcut's input.
+//
+// "selftest":
+// The vCard is written the way macOS writes them: types, item groups with custom and Apple-encoded
+// labels, escapes, a folded line, no department. Every category in the profile has a match, so
+// nothing prompts. Expected on the card: mobile and school phones (not work or other), the primary
+// email, the home address (not work), title, company and birthday; the school number keeps its
+// custom label in the vCard as an item1.TEL / item1.X-ABLabel pair.
+//
+// "selftest-sparse": a card with a name but no FN, one mobile number and nothing else, under a
+// profile that wants email, address, birthday and title and lacks the "email" and "address" keys
+// (as profiles saved by earlier builds do). Expected: "Sam Rivera" and the mobile number only.
+//
+// "selftest-burdell" and "selftest-doe": the example contacts used for the README's pictures,
+// George P. Burdell under a Business-style profile and Jane Doe under a Personal-style one (her
+// "Lab" number has a custom label). All numbers are in the 555-01xx range reserved for fiction.
+
+@Manual = "no"
+@UseCache = "no"
+@ProfileId = "test"
+if @InputText == "selftest-burdell" {
+    @SourceVCard = "BEGIN:VCARD\nVERSION:3.0\nN:Burdell;George;P.;;\nFN:George P. Burdell\nORG:Georgia Institute of Technology;Class of 1930\nTITLE:Student\nEMAIL;type=INTERNET;type=WORK;type=pref:george.burdell@example.edu\nEMAIL;type=INTERNET;type=HOME:gpburdell@example.com\nTEL;type=CELL;type=VOICE;type=pref:+1 404 555 0130\nTEL;type=WORK;type=VOICE:+1 404 555 0100\nADR;type=WORK;type=pref:;;North Ave NW;Atlanta;GA;30332;USA\nBDAY:1927-04-01\nEND:VCARD"
+    @Profile = {"name": "Business", "fields": ",company,title,department,phone,email,", "phone": ",work,mobile,", "email": ",work,", "address": ","}
+}
+if @InputText == "selftest-doe" {
+    @SourceVCard = "BEGIN:VCARD\nVERSION:3.0\nN:Doe;Jane;;;\nFN:Jane Doe\nORG:Example Corp;Research\nTITLE:Research Scientist\nEMAIL;type=INTERNET;type=WORK;type=pref:jane.doe@example.com\nEMAIL;type=INTERNET;type=HOME:jane@example.org\nTEL;type=CELL;type=VOICE;type=pref:+1 312 555 0199\nTEL;type=HOME;type=VOICE:+1 312 555 0142\nitem1.TEL:+1 312 555 0177\nitem1.X-ABLabel:Lab\nADR;type=HOME;type=pref:;;123 Main St;Springfield;IL;62701;USA\nBDAY:1990-04-01\nEND:VCARD"
+    @Profile = {"name": "Personal", "fields": ",phone,email,address,birthday,", "phone": ",mobile,lab,", "email": ",home,", "address": ",home,"}
+}
+if @InputText == "selftest-sparse" {
+    @SourceVCard = "BEGIN:VCARD\nVERSION:3.0\nN:Rivera;Sam;;;\nTEL;type=CELL;type=VOICE:+1 404 555 0111\nEND:VCARD"
+    @Profile = {"name": "Sparse", "fields": ",title,birthday,phone,email,address,", "phone": ",mobile,"}
+}
+if @InputText == "selftest" {
+    const Name = "Jane"
+    @SourceVCard = "BEGIN:VCARD\nVERSION:3.0\nPRODID:-//Apple Inc.//macOS 26.7.1//EN\nN:Doe\\, Jr.;{Name};;;\nFN:{Name} Doe\\, Jr.\nORG:Georgia Tech;\nTITLE:Research Scientist\\; Lead\nEMAIL;type=INTERNET;type=pref:jane.doe@example.com\nEMAIL;type=INTERNET;type=HOME:jane@example.org\nTEL;type=WORK;type=VOICE;type=pref:+1 404 555 0100\nTEL;type=CELL;type=VOICE:+1 404 555 0199\nitem2.TEL:+1 404 555 0142\nitem2.X-ABLabel:_$!<Other>!$_\nitem3.TEL;type=pref:+1 404 555 0177\nitem3.X-ABLabel:School\nADR;type=HOME;type=pref:;;85 Fifth St NW;Atlanta;GA;30308;USA\nADR;type=WORK:;;North Ave NW;Atlanta;GA;30332;USA\nNOTE:a note long enough that macOS\n  folds it onto a second line\nBDAY:1990-04-01\nEND:VCARD"
+
+    @Profile = {"name": "Test", "fields": ",company,title,birthday,phone,email,address,", "phone": ",mobile,school,", "email": ",primary,", "address": ",home,"}
+}

@@ -1,0 +1,117 @@
+// Adds, edits, renames or deletes a sharing profile, then stops the shortcut.
+// Expects profiles.cherri's output, and @CustomLabelsFor from parsing your saved identity (so
+// custom labels on your own card can be offered as selectors).
+
+@EditAction = ""
+menu "Profiles" {
+    item "Add a profile":
+        @EditAction = "add"
+    item "Edit a profile":
+        @EditAction = "edit"
+    item "Rename a profile":
+        @EditAction = "rename"
+    item "Delete a profile":
+        @EditAction = "delete"
+}
+
+@EditId = ""
+@EditProfile = {}
+if @EditAction == "add" {
+    const NewName = prompt("Name for the new profile")
+    const NewId = formatDate(CurrentDate, "Custom", "yyyyMMddHHmmss")
+    @EditId = "{NewId}"
+    @EditProfile = {"name": "{NewName}", "fields": ",", "phone": ",", "email": ",", "address": ","}
+} else {
+    const PickedProfileName = chooseFromList(@ProfileNames, "Profile")
+    const PickedProfileId = getValue(@ProfileIdFor, "{PickedProfileName}")
+    @EditId = "{PickedProfileId}"
+    const EditFile = getFile("QRVCard/profiles/{@EditId}.json", nil, false)
+    @EditProfile = getDictionary(EditFile)
+}
+
+if @EditAction == "delete" {
+    @RemainingIds: array
+    for KeptId in @ProfileIds {
+        if @KeptId != @EditId {
+            @RemainingIds += @KeptId
+        }
+    }
+    // Delete Files asks for confirmation itself; cancelling stops here with nothing changed.
+    const DeletedFile = getFile("QRVCard/profiles/{@EditId}.json", nil, false)
+    deleteFiles(DeletedFile)
+    const RemainingOrder = joinText(@RemainingIds, "\n")
+    saveFile("QRVCard/profiles/order.txt", RemainingOrder, true)
+    alert("Profile deleted.", "QR VCard Share")
+    stop()
+}
+
+if @EditAction == "rename" {
+    const OldName = getValue(@EditProfile, "name")
+    const RenamedTo = prompt("New name", "Text", "{OldName}")
+    @EditProfile = setValue(@EditProfile, "name", RenamedTo)
+    saveFile("QRVCard/profiles/{@EditId}.json", @EditProfile, true)
+    alert("Profile renamed.", "QR VCard Share")
+    stop()
+}
+
+// Add or edit: first which categories, then which labels within each list category.
+const CurrentFields = getValue(@EditProfile, "fields")
+const CurrentFieldsTrimmed = replaceText('^,+|,+$', '', "{CurrentFields}", true, true)
+const CurrentFieldsSpaced = replaceText(',+', ', ', "{CurrentFieldsTrimmed}", true, true)
+@CurrentFieldsShown = "{CurrentFieldsSpaced}"
+if @CurrentFieldsShown == "" {
+    @CurrentFieldsShown = "none"
+}
+const CategoryKeys = {"Company": "company", "Job Title": "title", "Department": "department", "Birthday": "birthday", "Phone Numbers": "phone", "Email Addresses": "email", "Addresses": "address"}
+const CategoryOptions = list("Company", "Job Title", "Department", "Birthday", "Phone Numbers", "Email Addresses", "Addresses")
+const PickedCategories = chooseFromList(CategoryOptions, "Include (now: {@CurrentFieldsShown})", true)
+@NewFields = ","
+for PickedCategory in PickedCategories {
+    const PickedKey = getValue(CategoryKeys, @PickedCategory)
+    @NewFields += "{PickedKey},"
+}
+@EditProfile = setValue(@EditProfile, "fields", @NewFields)
+
+const LabelPrompts = {"phone": "Phone numbers", "email": "Email addresses", "address": "Addresses"}
+const ListCategories = list("phone", "email", "address")
+for ListCategory in ListCategories {
+    // "," rather than "": Set Dictionary Value refuses an empty value.
+    @NewSelectors = ","
+    if @NewFields contains ",{@ListCategory}," {
+        @LabelOptions = list("Primary", "All", "Home", "Work", "Other")
+        if @ListCategory == "phone" {
+            @LabelOptions = list("Primary", "All", "Mobile", "iPhone", "Work", "Home", "Main", "Pager", "Other")
+        }
+        const CustomLabels = getValue(@CustomLabelsFor, @ListCategory)
+        const CustomLabelList = splitText("{CustomLabels}", ",")
+        for CustomLabel in CustomLabelList {
+            if @CustomLabel != "" {
+                @LabelOptions += @CustomLabel
+            }
+        }
+        const CurrentSelectors = getValue(@EditProfile, @ListCategory)
+        const CurrentSelectorsTrimmed = replaceText('^,+|,+$', '', "{CurrentSelectors}", true, true)
+        const CurrentSelectorsSpaced = replaceText(',+', ', ', "{CurrentSelectorsTrimmed}", true, true)
+        @CurrentSelectorsShown = "{CurrentSelectorsSpaced}"
+        if @CurrentSelectorsShown == "" {
+            @CurrentSelectorsShown = "none"
+        }
+        const LabelPrompt = getValue(LabelPrompts, @ListCategory)
+        const PickedLabels = chooseFromList(@LabelOptions, "{LabelPrompt}: which labels? (now: {@CurrentSelectorsShown})", true)
+        @NewSelectors = ","
+        for PickedLabel in PickedLabels {
+            const PickedSelector = lowercase(@PickedLabel)
+            @NewSelectors += "{PickedSelector},"
+        }
+    }
+    @EditProfile = setValue(@EditProfile, @ListCategory, @NewSelectors)
+}
+
+saveFile("QRVCard/profiles/{@EditId}.json", @EditProfile, true)
+if @EditAction == "add" {
+    @ProfileIds += @EditId
+    const NewOrder = joinText(@ProfileIds, "\n")
+    saveFile("QRVCard/profiles/order.txt", NewOrder, true)
+}
+alert("Profile saved.", "QR VCard Share")
+stop()

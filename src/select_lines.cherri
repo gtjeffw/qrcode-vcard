@@ -1,0 +1,149 @@
+// Decides what goes on the card for one contact and profile, asking only where the profile
+// can't decide. Expects vcard_parse.cherri's output and:
+//   @Profile     dictionary: "fields" (",company,title,phone,..."), "phone"/"email"/"address"
+//                (label selectors such as ",mobile,primary,"; ",all," takes every entry). Missing
+//                keys or empty values mean nothing is selected; nothing here may store an empty value,
+//                because Set Dictionary Value refuses one.
+//   @ProfileId   names the cache folder
+//   @Manual      "yes" to ask for every phone/email/address category, ignoring matches and cache
+//   @UseCache    "yes" to read and update the per-contact cache
+// Produces @CardTitle @CardCompany @CardDepartment @CardBirthday, @CardLines, and, when answers
+// changed, @CacheChanged = "yes" with @NewCache to be saved to @CachePath.
+//
+// The cache holds, per profile and contact, the answers to earlier prompts. It never holds the
+// contact's details: contacts are keyed by a hash of their name line and answers are hashes of the
+// chosen lines. Each answer also records the selectors in force when it was given, so editing a
+// profile's labels for one category re-asks only that category.
+
+const FieldsValue = getValue(@Profile, "fields")
+@Fields = "{FieldsValue}"
+
+@CardTitle = ""
+@CardCompany = ""
+@CardDepartment = ""
+@CardBirthday = ""
+if @Fields contains ",title," {
+    @CardTitle = "{@VTitle}"
+}
+if @Fields contains ",company," {
+    @CardCompany = "{@VCompany}"
+}
+if @Fields contains ",department," {
+    @CardDepartment = "{@VDepartment}"
+}
+if @Fields contains ",birthday," {
+    @CardBirthday = "{@VBirthday}"
+}
+
+const ContactKey = hash(@VNameLine, "SHA256")
+@CachePath = "QRVCard/cache/{@ProfileId}/{ContactKey}.json"
+// Every key is always present, so reads never look up a missing key.
+@Cache = {"phone_sel": "-", "phone": ",", "email_sel": "-", "email": ",", "address_sel": "-", "address": ","}
+if @UseCache == "yes" {
+    // Get File fails when the folder is missing, even with errorIfNotFound off, so make sure the
+    // profile's cache folder exists before the first read.
+    createFolder("QRVCard/cache/{@ProfileId}")
+    const CacheFile = getFile(@CachePath, nil, false)
+    if CacheFile {
+        @Cache = getDictionary(CacheFile)
+    }
+}
+@NewCache = @Cache
+@CacheChanged = "no"
+
+const CategoryPrompts = {"phone": "Phone numbers to include", "email": "Email addresses to include", "address": "Addresses to include"}
+const Categories = list("phone", "email", "address")
+@CardLines: array
+
+for Category in Categories {
+    @Needle = ",{@Category},"
+    const SelectorsValue = getValue(@Profile, @Category)
+    // Wrapped in commas so it is never empty; empty entries are skipped when matching.
+    @Selectors = ",{SelectorsValue},"
+    @CategoryLinesText = "{PhoneLinesText}"
+    if @Category == "email" {
+        @CategoryLinesText = "{EmailLinesText}"
+    }
+    if @Category == "address" {
+        @CategoryLinesText = "{AddressLinesText}"
+    }
+    @Chosen: array
+
+    @Wanted = "no"
+    if @Fields contains @Needle {
+        if @CategoryLinesText != "" {
+            @Wanted = "yes"
+        }
+    }
+
+    if @Wanted == "yes" {
+        const CategoryLines = splitText(@CategoryLinesText, "\n")
+
+        if @Manual != "yes" {
+            for CandidateLine in CategoryLines {
+                const CandidateTags = getValue(@TagsFor, @CandidateLine)
+                @CandidateTagsText = "{CandidateTags}"
+                @Hit = "no"
+                if @Selectors contains ",all," {
+                    @Hit = "yes"
+                }
+                const SelectorList = splitText(@Selectors, ",")
+                for Selector in SelectorList {
+                    if @Selector != "" {
+                        if @CandidateTagsText contains ",{@Selector}," {
+                            @Hit = "yes"
+                        }
+                    }
+                }
+                if @Hit == "yes" {
+                    @Chosen += @CandidateLine
+                }
+            }
+        }
+
+        // Nothing matched: reuse an earlier answer if the selectors haven't changed since.
+        const MatchedCount = count(@Chosen)
+        if MatchedCount == 0 {
+            if @Manual != "yes" {
+                const CachedSelectors = getValue(@Cache, "{@Category}_sel")
+                @CachedSelectorsText = "{CachedSelectors}"
+                if @CachedSelectorsText == @Selectors {
+                    const CachedHashes = getValue(@Cache, @Category)
+                    @CachedHashesText = "{CachedHashes}"
+                    for CachedCandidate in CategoryLines {
+                        const CandidateHash = hash(@CachedCandidate, "SHA256")
+                        if @CachedHashesText contains CandidateHash {
+                            @Chosen += @CachedCandidate
+                        }
+                    }
+                }
+            }
+        }
+
+        // Still nothing: ask, and remember the answer for this contact and profile.
+        const ResolvedCount = count(@Chosen)
+        if ResolvedCount == 0 {
+            @Options: array
+            for OptionLine in CategoryLines {
+                const OptionDisplay = getValue(@DisplayFor, @OptionLine)
+                @Options += OptionDisplay
+            }
+            const PromptText = getValue(CategoryPrompts, @Category)
+            const Picked = chooseFromList(@Options, "{PromptText}", true)
+            @PickedHashes = ","
+            for PickedDisplay in Picked {
+                const PickedLine = getValue(@LineFor, @PickedDisplay)
+                @Chosen += PickedLine
+                const PickedHash = hash(PickedLine, "SHA256")
+                @PickedHashes += "{PickedHash},"
+            }
+            @NewCache = setValue(@NewCache, "{@Category}_sel", @Selectors)
+            @NewCache = setValue(@NewCache, @Category, @PickedHashes)
+            @CacheChanged = "yes"
+        }
+
+        for ChosenLine in @Chosen {
+            @CardLines += @ChosenLine
+        }
+    }
+}

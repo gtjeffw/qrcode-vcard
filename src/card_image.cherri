@@ -1,0 +1,26 @@
+// Renders the card image: the vCard as a QR code above the contact details.
+// Expects @VCardText and @CardDetailsHTML from vcard_text.cherri. Produces const CardImage.
+//
+// The QR code is on top because iOS puts its Live Text button in an image's bottom corner.
+// The code and the details are rendered separately and overlaid onto a blank card at fixed pixel
+// positions, rather than laid out with CSS padding: macOS honours body padding when turning HTML
+// into rich text, but iOS drops it. (Combine Images would be simpler, but Cherri's combineImages()
+// compiles to an identifier Shortcuts does not recognise.)
+
+const QRCode = makeQRCode(@VCardText)
+const ResizedQRCode = resizeImage(QRCode, "556")
+const QRCodeImage = convertImage(ResizedQRCode, "PNG")
+
+// Rich text renders at the screen's scale, so every rendered image is scaled back to 600 wide.
+const BlankHTML = "<html>\n<body style=\"margin:0; background-color:white;\">&nbsp;</body>\n</html>"
+const BlankRichText = getRichTextFromHTML(BlankHTML)
+const BlankCardRaw = makeImageFromRichText(BlankRichText, "600", "1000")
+const BlankCard = resizeImage(BlankCardRaw, "600")
+
+const DetailsHTML = "<html>\n<head><meta charset=\"utf-8\"></head>\n<body style=\"margin:0; padding:0 22px 16px 22px; background-color:white; font-family:-apple-system, Helvetica; font-size:18px; line-height:1.5;\">\n{@CardDetailsHTML}</body>\n</html>"
+const DetailsRichText = getRichTextFromHTML(DetailsHTML)
+const DetailsImageRaw = makeImageFromRichText(DetailsRichText, "600", "400")
+const DetailsImage = resizeImage(DetailsImageRaw, "600")
+
+const CardWithQRCode = customImageOverlay(BlankCard, QRCodeImage, nil, nil, "0", "100", "Custom", "22", "22")
+const CardImage = customImageOverlay(CardWithQRCode, DetailsImage, nil, nil, "0", "100", "Custom", "0", "600")

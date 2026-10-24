@@ -1,0 +1,67 @@
+// Builds the vCard 3.0 text, and the same details for people to read, from vcard_parse.cherri's
+// output. Expects these to be set by the including shortcut (select_lines.cherri sets them):
+//   @CardTitle @CardCompany @CardDepartment @CardBirthday   raw values, "" to leave a field out
+//   @CardLines   the TEL/EMAIL/ADR lines to include, in order
+// Produces @VCardText, @CardDetailsHTML (card_image.cherri turns it into the card) and
+// @CardDetailsText, a plain-text list of exactly what the vCard holds, for the share preview.
+
+// Shortcuts treats an empty text as having a value, so turn every field into text (a missing
+// value becomes "") and test fields against "" rather than with a bare `if`.
+@CardTitle = "{@CardTitle}"
+@CardCompany = "{@CardCompany}"
+@CardDepartment = "{@CardDepartment}"
+@CardBirthday = "{@CardBirthday}"
+
+// Values arrive still escaped for the vCard; strip the escapes for display.
+const ShownTitle = replaceText('\\(.)', '$1', @CardTitle, true, true)
+const ShownCompany = replaceText('\\(.)', '$1', @CardCompany, true, true)
+const ShownDepartment = replaceText('\\(.)', '$1', @CardDepartment, true, true)
+
+@VCardText = "BEGIN:VCARD\nVERSION:3.0\n{@VNameLine}\n{@VFNLine}\n"
+@CardHeader = "{@VFullName}"
+@CardOrg = ""
+if @CardTitle != "" {
+    @VCardText += "TITLE:{@CardTitle}\n"
+    @CardHeader += " - {ShownTitle}"
+}
+if @CardCompany != "" {
+    @VCardText += "ORG:{@CardCompany};{@CardDepartment}\n"
+    @CardOrg = "{ShownCompany}"
+    if @CardDepartment != "" {
+        @CardOrg += " - {ShownDepartment}"
+    }
+} else {
+    if @CardDepartment != "" {
+        @VCardText += "ORG:;{@CardDepartment}\n"
+        @CardOrg = "{ShownDepartment}"
+    }
+}
+
+@CardDetailsHTML = "<div><b>{@CardHeader}</b></div>\n"
+@CardDetailsText = "{@CardHeader}"
+if @CardOrg != "" {
+    @CardDetailsHTML += "<div>{@CardOrg}</div>\n"
+    @CardDetailsText += "\n{@CardOrg}"
+}
+
+// A custom label travels as a pair of grouped lines ("item1.TEL:..." and "item1.X-ABLabel:...").
+@ItemNumber = 0
+for CardLine in @CardLines {
+    const CardLineDisplay = getValue(@DisplayFor, @CardLine)
+    const CardLineLabel = getValue(@RawLabelFor, @CardLine)
+    @CardLineLabelText = "{CardLineLabel}"
+    if @CardLineLabelText != "-" {
+        @ItemNumber += 1
+        @VCardText += "item{@ItemNumber}.{@CardLine}\nitem{@ItemNumber}.X-ABLabel:{@CardLineLabelText}\n"
+    } else {
+        @VCardText += "{@CardLine}\n"
+    }
+    @CardDetailsHTML += "<div>{CardLineDisplay}</div>\n"
+    @CardDetailsText += "\n{CardLineDisplay}"
+}
+if @CardBirthday != "" {
+    @VCardText += "BDAY:{@CardBirthday}\n"
+    @CardDetailsHTML += "<div>Birthday: {@CardBirthday}</div>\n"
+    @CardDetailsText += "\nBirthday: {@CardBirthday}"
+}
+@VCardText += "END:VCARD"

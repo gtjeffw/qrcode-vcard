@@ -1,0 +1,38 @@
+// Loads the sharing profiles, creating a starting set the first time.
+// Each profile is QRVCard/profiles/<id>.json with "name", "fields" and the "phone", "email" and
+// "address" label selectors; QRVCard/profiles/order.txt lists the ids in menu order.
+// Produces @ProfileIds and @ProfileNames (lists, in order) and @ProfileIdFor (name -> id).
+
+createFolder("QRVCard/profiles")
+const ExistingOrder = getFile("QRVCard/profiles/order.txt", nil, false)
+if !ExistingOrder {
+    const BusinessProfile = {"name": "Business", "fields": ",company,title,department,phone,email,", "phone": ",work,", "email": ",work,", "address": ","}
+    const PersonalProfile = {"name": "Personal", "fields": ",phone,email,address,birthday,", "phone": ",mobile,", "email": ",home,", "address": ",home,"}
+    const CellOnlyProfile = {"name": "Cell only", "fields": ",phone,", "phone": ",mobile,", "email": ",", "address": ","}
+    const EverythingProfile = {"name": "Everything", "fields": ",company,title,department,birthday,phone,email,address,", "phone": ",all,", "email": ",all,", "address": ",all,"}
+    saveFile("QRVCard/profiles/business.json", BusinessProfile, true)
+    saveFile("QRVCard/profiles/personal.json", PersonalProfile, true)
+    saveFile("QRVCard/profiles/cell.json", CellOnlyProfile, true)
+    saveFile("QRVCard/profiles/everything.json", EverythingProfile, true)
+    const SeedOrder = text("business\npersonal\ncell\neverything")
+    saveFile("QRVCard/profiles/order.txt", SeedOrder, true)
+}
+
+@ProfileIds: array
+@ProfileNames: array
+@ProfileIdFor = {}
+const OrderFile = getFile("QRVCard/profiles/order.txt", nil, false)
+const OrderText = getText(OrderFile)
+const OrderIds = splitText(OrderText, "\n")
+for OrderId in OrderIds {
+    if @OrderId != "" {
+        const ListedFile = getFile("QRVCard/profiles/{@OrderId}.json", nil, false)
+        if ListedFile {
+            const ListedProfile = getDictionary(ListedFile)
+            const ListedName = getValue(ListedProfile, "name")
+            @ProfileIds += @OrderId
+            @ProfileNames += ListedName
+            @ProfileIdFor = setValue(@ProfileIdFor, "{ListedName}", @OrderId)
+        }
+    }
+}

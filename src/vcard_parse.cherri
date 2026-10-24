@@ -1,0 +1,167 @@
+// Parses a contact's vCard text (as macOS writes it) into the pieces the card is built from.
+// Expects @SourceVCard (text; may be empty). Produces:
+//   @VNameLine @VFNLine        the N and FN lines, ready to copy into the output vCard
+//   @VFullName                 FN for display (from N, or "Contact", when the card has no FN)
+//   @VTitle @VCompany @VDepartment @VBirthday   raw (still escaped) values, "" when absent
+//   PhoneLinesText EmailLinesText AddressLinesText   each kind's lines, one per line (may be empty)
+//   @TagsFor                   dictionary: vCard line -> its labels, e.g. ",mobile,voice,primary,"
+//   @LineFor @DisplayFor       dictionaries: display label <-> vCard line ("mobile: +1 404 555 0100")
+//   @CustomLabelsFor           dictionary: kind -> custom labels seen, e.g. ",school,"
+//   @RawLabelFor               dictionary: vCard line -> its X-ABLabel value as written, or "-"
+// vCard lines keep their parameters (TEL;type=CELL;...) so the receiver keeps each number's type.
+
+// Join folded lines (CRLF or LF followed by a space or tab) so every property is on one line.
+const NoCR = replaceText('\r', '', @SourceVCard, true, true)
+const Unfolded = replaceText('\n[ \t]', '', NoCR, true, true)
+
+// Apple prefixes some properties with a group such as "item1.", which is dropped.
+// Replace Text on an empty input returns nothing, which does not compare equal to "", so values
+// that are tested against "" below are wrapped as text first.
+const NameMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?N[;:].*$', Unfolded)
+const NameMatch = getFirstItem(NameMatches)
+const NameLineRaw = replaceText('^[A-Za-z0-9-]+\.', '', "{NameMatch}", true, true)
+@VNameLine = "{NameLineRaw}"
+if @VNameLine == "" {
+    @VNameLine = "N:;;;;"
+}
+
+const FNMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?FN[;:].*$', Unfolded)
+const FNMatch = getFirstItem(FNMatches)
+const FNLineRaw = replaceText('^[A-Za-z0-9-]+\.', '', "{FNMatch}", true, true)
+@VFNLine = "{FNLineRaw}"
+const FNValue = replaceText('^[^:]*:', '', @VFNLine, true, true)
+const FullNameRaw = replaceText('\\(.)', '$1', FNValue, true, true)
+@VFullName = "{FullNameRaw}"
+// vCard 3.0 requires FN; build one from N ("Last;First;...") when a card has none.
+if @VFullName == "" {
+    const NameValue = replaceText('^[^:]*:', '', @VNameLine, true, true)
+    const NameFirstLast = replaceText('^((?:[^;\\]|\\.)*);?((?:[^;\\]|\\.)*).*$', '$2 $1', NameValue, true, true)
+    const NameTrimmed = trimWhitespace(NameFirstLast)
+    @VFNLine = "FN:{NameTrimmed}"
+    const FallbackName = replaceText('\\(.)', '$1', NameTrimmed, true, true)
+    @VFullName = "{FallbackName}"
+    if @VFullName == "" {
+        @VFNLine = "FN:Contact"
+        @VFullName = "Contact"
+    }
+}
+
+const TitleMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?TITLE[;:].*$', Unfolded)
+const TitleMatch = getFirstItem(TitleMatches)
+@VTitle = replaceText('^[^:]*:', '', "{TitleMatch}", true, true)
+
+// ORG is "Company;Department", with "\;" for a literal semicolon inside either part.
+const OrgMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?ORG[;:].*$', Unfolded)
+const OrgMatch = getFirstItem(OrgMatches)
+const OrgValue = replaceText('^[^:]*:', '', "{OrgMatch}", true, true)
+@VCompany = replaceText('^((?:[^;\\]|\\.)*).*$', '$1', OrgValue, true, true)
+@VDepartment = replaceText('^(?:[^;\\]|\\.)*;?((?:[^;\\]|\\.)*).*$', '$1', OrgValue, true, true)
+
+const BirthdayMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?BDAY[;:].*$', Unfolded)
+const BirthdayMatch = getFirstItem(BirthdayMatches)
+@VBirthday = replaceText('^[^:]*:', '', "{BirthdayMatch}", true, true)
+
+@PhoneLines: array
+@EmailLines: array
+@AddressLines: array
+@PhoneCustom = ","
+@EmailCustom = ","
+@AddressCustom = ","
+@LineFor = {}
+@DisplayFor = {}
+@TagsFor = {}
+@RawLabelFor = {}
+
+const LineMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?(?:TEL|EMAIL|ADR)[;:].*$', Unfolded)
+for LineMatch in LineMatches {
+    const Group = replaceText('^(?:([A-Za-z0-9-]+)\.)?.*$', '$1', "{@LineMatch}", true, true)
+    const Line = replaceText('^[A-Za-z0-9-]+\.', '', "{@LineMatch}", true, true)
+    const Kind = replaceText('^([A-Za-z]+).*$', '$1', Line, true, true)
+    const Params = replaceText('^([^:]*):.*$', '$1', Line, true, true)
+    const Value = replaceText('^[^:]*:', '', Line, true, true)
+
+    // Every type becomes a tag: ";type=CELL;type=VOICE;type=pref" -> ",mobile,voice,primary,".
+    const LowerParams = lowercase(Params)
+    const TypeParams = replaceText('^[a-z]+', '', LowerParams, true, true)
+    const TypeTags = replaceText(';type=|;', ',', TypeParams, true, true)
+    const MobileTags = replaceText(',cell(?=,|$)', ',mobile', TypeTags, true, true)
+    const PrimaryTags = replaceText(',pref(?=,|$)', ',primary', MobileTags, true, true)
+    @Tags = "{PrimaryTags},"
+
+    // The label shown is the first type that says what the entry is, skipping VOICE, INTERNET
+    // and pref, unless Contacts has a custom label for it.
+    const Meaningful = replaceText('(?i);type=(VOICE|INTERNET|pref)', '', Params, true, true)
+    const RawLabel = replaceText('(?i)^[A-Z]+(?:;type=([A-Za-z]+))?.*$', '$1', Meaningful, true, true)
+    const MobileLabel = replaceText('(?i)^cell$', 'mobile', RawLabel, true, true)
+    @Label = lowercase(MobileLabel)
+
+    // Custom labels sit on a separate "itemN.X-ABLabel:" line with the same group. Apple writes
+    // its own labels there as "_$!<Other>!$_"; anything else is a label the user typed.
+    @Custom = ""
+    @WrittenLabel = "-"
+    if Group != "" {
+        const LabelMatches = matchText("(?m)^{Group}\\.X-ABLabel:.*$", Unfolded)
+        const LabelMatch = getFirstItem(LabelMatches)
+        const LabelValue = replaceText('^[^:]*:', '', "{LabelMatch}", true, true)
+        const LabelUnwrapped = replaceText('^_\$!<(.*)>!\$_$', '$1', LabelValue, true, true)
+        const LabelUnescaped = replaceText('\\(.)', '$1', LabelUnwrapped, true, true)
+        @Custom = lowercase(LabelUnescaped)
+        if @Custom != "" {
+            @WrittenLabel = "{LabelValue}"
+        }
+    }
+    if @Custom != "" {
+        @Label = "{@Custom}"
+        @Tags += "{@Custom},"
+    }
+
+    @Shown = replaceText('\\(.)', '$1', Value, true, true)
+    if Kind == "TEL" {
+        if @Label == "" {
+            @Label = "phone"
+        }
+        @PhoneLines += Line
+        if @Custom != "" {
+            @PhoneCustom += "{@Custom},"
+        }
+    }
+    if Kind == "EMAIL" {
+        if @Label == "" {
+            @Label = "email"
+        }
+        @EmailLines += Line
+        if @Custom != "" {
+            @EmailCustom += "{@Custom},"
+        }
+    }
+    if Kind == "ADR" {
+        if @Label == "" {
+            @Label = "address"
+        }
+        @AddressLines += Line
+        if @Custom != "" {
+            @AddressCustom += "{@Custom},"
+        }
+        // ";;street;city;region;postcode;country" -> "street, city, region, postcode, country"
+        const AddressParts = replaceText('(?<!\\);+', ', ', Value, true, true)
+        const AddressTrimmed = replaceText('^(?:, )+|(?:, )+$', '', AddressParts, true, true)
+        const AddressOneLine = replaceText('\\n', ', ', AddressTrimmed, true, true)
+        @Shown = replaceText('\\(.)', '$1', AddressOneLine, true, true)
+    }
+
+    @Display = "{@Label}: {@Shown}"
+    @LineFor = setValue(@LineFor, @Display, Line)
+    @DisplayFor = setValue(@DisplayFor, Line, @Display)
+    @TagsFor = setValue(@TagsFor, Line, @Tags)
+    // Every line gets an entry: Get Dictionary Value reads a missing key containing "." (as in an
+    // email address) as a key path and fails, rather than returning nothing.
+    @RawLabelFor = setValue(@RawLabelFor, Line, @WrittenLabel)
+}
+
+const PhoneLinesText = joinText(@PhoneLines, "\n")
+const EmailLinesText = joinText(@EmailLines, "\n")
+const AddressLinesText = joinText(@AddressLines, "\n")
+@CustomLabelsFor = {}
+@CustomLabelsFor = setValue(@CustomLabelsFor, "phone", @PhoneCustom)
+@CustomLabelsFor = setValue(@CustomLabelsFor, "email", @EmailCustom)
+@CustomLabelsFor = setValue(@CustomLabelsFor, "address", @AddressCustom)

@@ -1,0 +1,18 @@
+.DS_Store
+
+# Compiled shortcuts (scripts/build.sh)
+/build/
+
+# Patched Cherri checkout and binary (scripts/setup-cherri.sh)
+/tools/
+
+# Earlier attempts and probes, kept locally for reference only
+/archive/
+
+# Cherri --debug output
+*_processed.cherri
+/src/*.plist
+
+# Self-test input and output (README, Testing)
+/selftest*.txt
+/card.png

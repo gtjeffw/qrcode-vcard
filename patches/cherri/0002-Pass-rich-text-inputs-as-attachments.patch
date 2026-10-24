@@ -1,0 +1,67 @@
+From 217e887d2ca5f5b482112f3c77f48a39def565e9 Mon Sep 17 00:00:00 2001
+From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 09:10:09 -0400
+Subject: [PATCH 2/3] Pass rich text inputs as attachments
+
+getRichTextFromHTML() and getRichTextFromMarkdown() took a text
+parameter, so a variable input was wrapped in a WFTextTokenString, and
+Shortcuts then returned no rich text. Shortcuts built in the app pass
+the input as a WFTextTokenAttachment; declare the parameters as variable
+to match. Add runtime checks to tests/text.cherri.
+
+A literal string argument is still emitted as a bare string, which
+Shortcuts discards; that was already the case before this change.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ actions/text.cherri |  4 ++--
+ tests/text.cherri   | 15 +++++++++++++++
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/actions/text.cherri b/actions/text.cherri
+index d55256e..65aef69 100644
+--- a/actions/text.cherri
++++ b/actions/text.cherri
+@@ -6,13 +6,13 @@ Text Editing Actions
+ action 'gethtmlfromrichtext' makeHTML(text input: 'WFInput', bool ?makeFullDocument: 'WFMakeFullDocument' = false): text
+ 
+ // [Doc]: [Rich Text] Make Rich Text from HTML
+-action getRichTextFromHTML(text html: 'WFHTML'): text
++action getRichTextFromHTML(variable html: 'WFHTML'): text
+ 
+ // [Doc]: [Rich Text] Make Markdown: Make Markdown from Rich Text.
+ action 'getmarkdownfromrichtext' makeMarkdown(text richText: 'WFInput'): text
+ 
+ // [Doc]: [Rich Text] Get Rich Text from Markdown
+-action getRichTextFromMarkdown(text markdown: 'WFInput'): text
++action getRichTextFromMarkdown(variable markdown: 'WFInput'): text
+ 
+ enum stopListeningTrigger {
+ 	'After Pause',
+diff --git a/tests/text.cherri b/tests/text.cherri
+index c33ae50..f08c9f8 100644
+--- a/tests/text.cherri
++++ b/tests/text.cherri
+@@ -49,4 +49,19 @@ if allCapitalized != "Hello World" {
+     mustOutput("❌ FAIL: capitalizeAll — got {allCapitalized}, expected 'Hello World'", "❌ FAIL: capitalizeAll — got {allCapitalized}, expected 'Hello World'")
+ }
+ 
++// getRichTextFromHTML / getRichTextFromMarkdown (input passed as a variable)
++const html = "<p>Hello <b>world</b></p>"
++const richFromHTML = getRichTextFromHTML(html)
++const htmlMarkdown = makeMarkdown(richFromHTML)
++if htmlMarkdown !contains "Hello" {
++    mustOutput("❌ FAIL: getRichTextFromHTML — got {htmlMarkdown}, expected it to contain 'Hello'", "❌ FAIL: getRichTextFromHTML — got {htmlMarkdown}, expected it to contain 'Hello'")
++}
++
++const markdown = "Hello **world**"
++const richFromMarkdown = getRichTextFromMarkdown(markdown)
++const markdownHTML = makeHTML(richFromMarkdown)
++if markdownHTML !contains "Hello" {
++    mustOutput("❌ FAIL: getRichTextFromMarkdown — got {markdownHTML}, expected it to contain 'Hello'", "❌ FAIL: getRichTextFromMarkdown — got {markdownHTML}, expected it to contain 'Hello'")
++}
++
+ show("✅ All tests passed")
+-- 
+2.50.1 (Apple Git-155)
+

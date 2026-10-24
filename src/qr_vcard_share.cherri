@@ -1,0 +1,139 @@
+#define name QR VCard Share
+#define color orange
+
+#include 'actions/calendar'
+#include 'actions/contacts'
+#include 'actions/crypto'
+#include 'actions/documents'
+#include 'actions/images'
+#include 'actions/sharing'
+#include 'actions/text'
+
+// Show your own or any contact's details as a vCard QR code to scan, or share them with other
+// apps as a contact file. Sharing profiles choose the fields and, by label, which phone numbers,
+// emails and addresses go in. Settings live in the Shortcuts folder under QRVCard/:
+//   identity.vcf              snapshot of your contact card (re-run "Set your Identity" after editing it)
+//   profiles/                 the sharing profiles (profiles.cherri)
+//   cache/<profile>/          hashed answers to earlier prompts, per contact (select_lines.cherri)
+
+// "show" displays the QR card on screen; "share" sends a .vcf through the share sheet;
+// "profiles" manages the sharing profiles; "selftest" (run with the text "selftest" or
+// "selftest-sparse" as input) renders a made-up contact without any menus or files, for checking
+// from the command line.
+@Mode = ""
+// "identity" uses the saved identity; "pick" asks for a contact; "selftest" uses selftest.cherri.
+@Source = ""
+@InputText = "{ShortcutInput}"
+if @InputText beginsWith "selftest" {
+    @Mode = "selftest"
+    @Source = "selftest"
+} else {
+    createFolder("QRVCard")
+    menu "QR VCard Share" {
+        item "Show my QR VCard":
+            @Mode = "show"
+            @Source = "identity"
+        item "Show a contact's QR VCard":
+            @Mode = "show"
+            @Source = "pick"
+        item "Share my VCard":
+            @Mode = "share"
+            @Source = "identity"
+        item "Share a contact's VCard":
+            @Mode = "share"
+            @Source = "pick"
+        item "Set your Identity":
+            const IdentityContact = selectContact()
+            saveFile("QRVCard/identity.vcf", IdentityContact, true)
+            alert("Identity saved.", "QR VCard Share")
+            stop()
+        item "Manage profiles":
+            @Mode = "profiles"
+            @Source = "identity"
+    }
+}
+
+// Shortcuts reads a .vcf back as a contact (just a name as text), so read it under a .txt name
+// to get the vCard text itself.
+@SourceVCard = ""
+if @Source == "selftest" {
+    #include 'selftest.cherri'
+}
+if @Source == "identity" {
+    const IdentityFile = getFile("QRVCard/identity.vcf", nil, false)
+    if IdentityFile {
+        const IdentityTextFile = setName(IdentityFile, "identity.txt")
+        @SourceVCard = getText(IdentityTextFile)
+    } else {
+        // Managing profiles works without an identity; it just can't offer your custom labels.
+        if @Mode != "profiles" {
+            alert("No identity is set yet. Choose \"Set your Identity\" first.", "QR VCard Share")
+            stop()
+        }
+    }
+}
+if @Source == "pick" {
+    // A picked contact only becomes vCard text by way of a file, which is blanked afterwards
+    // so another person's details are not left in iCloud Drive.
+    const PickedContact = selectContact()
+    saveFile("QRVCard/picked_contact.vcf", PickedContact, true)
+    const PickedFile = getFile("QRVCard/picked_contact.vcf", nil, false)
+    const PickedTextFile = setName(PickedFile, "picked_contact.txt")
+    @SourceVCard = getText(PickedTextFile)
+    const Blank = text(" ")
+    saveFile("QRVCard/picked_contact.vcf", Blank, true)
+}
+
+#include 'vcard_parse.cherri'
+if @Mode != "selftest" {
+    #include 'profiles.cherri'
+
+    if @Mode == "profiles" {
+        #include 'profile_edit.cherri'
+    }
+
+    // Choose a profile. "Pick items manually" asks for every phone/email/address category even
+    // where the profile's labels match, and remembers the answers for this contact.
+    const ManualChoice = "Pick items manually…"
+    @ProfileChoices: array
+    for ListedChoice in @ProfileNames {
+        @ProfileChoices += @ListedChoice
+    }
+    @ProfileChoices += ManualChoice
+    const ChosenProfileItem = chooseFromList(@ProfileChoices, "Profile")
+    @ChosenProfileName = "{ChosenProfileItem}"
+    @Manual = "no"
+    if @ChosenProfileName == ManualChoice {
+        @Manual = "yes"
+        const ManualProfileItem = chooseFromList(@ProfileNames, "Profile to start from")
+        @ChosenProfileName = "{ManualProfileItem}"
+    }
+    const ChosenProfileId = getValue(@ProfileIdFor, @ChosenProfileName)
+    @ProfileId = "{ChosenProfileId}"
+    const ChosenProfileFile = getFile("QRVCard/profiles/{@ProfileId}.json", nil, false)
+    @Profile = getDictionary(ChosenProfileFile)
+    @UseCache = "yes"
+}
+
+#include 'select_lines.cherri'
+#include 'vcard_text.cherri'
+
+if @Mode == "share" {
+    // Show exactly what the .vcf holds before it can go anywhere; Cancel stops here.
+    confirm(@CardDetailsText, "Share these details?")
+    const VCardFile = setName(@VCardText, "{@VFullName}.vcf")
+    share(VCardFile)
+} else {
+    #include 'card_image.cherri'
+    if @Mode == "selftest" {
+        output(CardImage)
+    }
+    quicklook(CardImage)
+}
+
+// Remember new answers only after the card is shown or shared: Shortcuts asks before writing
+// contact-derived data to iCloud Drive, and that prompt should not come before the card.
+if @CacheChanged == "yes" {
+    createFolder("QRVCard/cache/{@ProfileId}")
+    saveFile(@CachePath, @NewCache, true)
+}

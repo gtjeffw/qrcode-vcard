@@ -1,0 +1,66 @@
+From 75fdfc46aea74165107aa52bf6cbdb871498407d Mon Sep 17 00:00:00 2001
+From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
+Date: Sat, 24 Oct 2026 09:10:09 -0400
+Subject: [PATCH 1/3] Apply rawAction identifier when assigned to a variable
+
+generateActions() set the identifier override for rawAction() only when
+it was a standalone statement. `const x = rawAction("id", {...})` goes
+through makeVariableValue() instead, so the action was emitted as
+is.workflow.actions.rawaction, which Shortcuts does not recognise.
+
+Route both paths through setCurrentTokenAction(). The existing
+tests/raw-action-output-capture.cherri covers this case: without the
+fix its runtime assertion fails, because the action does not exist.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ shortcutgen.go | 19 ++++++++++++-------
+ 1 file changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/shortcutgen.go b/shortcutgen.go
+index 5f7cf4a..23838bf 100644
+--- a/shortcutgen.go
++++ b/shortcutgen.go
+@@ -94,10 +94,7 @@ func generateActions() {
+ 			if actions[tokenAction.ident] == nil {
+ 				exit(fmt.Sprintf("Undefined action '%s'", tokenAction.ident))
+ 			}
+-			setCurrentAction(tokenAction.ident, actions[tokenAction.ident])
+-			if tokenAction.ident == "rawAction" && len(tokenAction.args) > 0 {
+-				currentAction.definition.overrideIdentifier = getArgValue(tokenAction.args[0]).(string)
+-			}
++			setCurrentTokenAction(tokenAction)
+ 			makeAction(tokenAction.args, &WFActionReference{})
+ 		case Repeat:
+ 			makeRepeatAction(&t)
+@@ -113,6 +110,15 @@ func generateActions() {
+ 	}
+ }
+ 
++// setCurrentTokenAction sets the current action from an action token, applying the identifier
++// given to rawAction() whether it is a standalone statement or assigned to a variable.
++func setCurrentTokenAction(tokenAction action) {
++	setCurrentAction(tokenAction.ident, actions[tokenAction.ident])
++	if tokenAction.ident == "rawAction" && len(tokenAction.args) > 0 {
++		currentAction.definition.overrideIdentifier = getArgValue(tokenAction.args[0]).(string)
++	}
++}
++
+ func makeCommentAction(comment string) {
+ 	if args.Using("comments") {
+ 		addStdAction("comment", map[string]any{
+@@ -206,9 +212,8 @@ func makeVariableValue(reference *WFActionReference, valueType tokenType, value
+ 		makeExpressionValue(reference, value)
+ 	case Action:
+ 		var valuePtr = *value
+-		var action = valuePtr.(action)
+-		setCurrentAction(action.ident, actions[action.ident])
+-		makeAction(action.args, reference)
++		setCurrentTokenAction(valuePtr.(action))
++		makeAction(valuePtr.(action).args, reference)
+ 	case Dict:
+ 		addStdAction("dictionary", attachReferenceToParams(map[string]any{
+ 			"WFItems": makeDictionaryValue(value),
+-- 
+2.50.1 (Apple Git-155)
+
