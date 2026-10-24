@@ -165,6 +165,10 @@ The shortcut is compiled with a patched build of Cherri. Build, test and release
 source layout and a list of Shortcuts and Cherri behaviors the implementation works around are
 documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+## Author
+
+Jeffrey Wilson ([@gtjeffw](https://github.com/gtjeffw)), Georgia Institute of Technology
+
 ## License
 
 Released under the [MIT License](LICENSE), with the exception of the Cherri patches in
