@@ -20,6 +20,11 @@
 // "profiles" manages the sharing profiles; "selftest" (run with the text "selftest" or
 // "selftest-sparse" as input) renders a made-up contact without any menus or files, for checking
 // from the command line.
+//
+// Text input can also skip the menu, for one-tap launchers (a shortcut that runs this one with a
+// fixed input): "show" or "share" for your own card, "show-contact" or "share-contact" for a
+// contact you pick, each optionally followed by ":" and a profile name, e.g. "show:Business".
+// An unknown profile name falls back to the profile list.
 @Mode = ""
 // "identity" uses the saved identity; "pick" asks for a contact; "selftest" uses selftest.cherri.
 @Source = ""
@@ -29,6 +34,31 @@ if @InputText beginsWith "selftest" {
     @Source = "selftest"
 } else {
     createFolder("QRVCard")
+    const CommandRaw = replaceText('^\s*([A-Za-z-]+)(?::.*)?\s*$', '$1', @InputText, true, true)
+    const CommandLower = lowercase(CommandRaw)
+    @Command = "{CommandLower}"
+    const RequestedRaw = replaceText('^\s*[A-Za-z-]+:?', '', @InputText, true, true)
+    const RequestedTrimmed = trimWhitespace(RequestedRaw)
+    @RequestedProfile = "{RequestedTrimmed}"
+    if @Command == "show" {
+        @Mode = "show"
+        @Source = "identity"
+    }
+    if @Command == "share" {
+        @Mode = "share"
+        @Source = "identity"
+    }
+    if @Command == "show-contact" {
+        @Mode = "show"
+        @Source = "pick"
+    }
+    if @Command == "share-contact" {
+        @Mode = "share"
+        @Source = "pick"
+    }
+}
+if @Mode == "" {
+    @RequestedProfile = ""
     menu "QR VCard Share" {
         item "Show my QR VCard":
             @Mode = "show"
@@ -92,21 +122,34 @@ if @Mode != "selftest" {
         #include 'profile_edit.cherri'
     }
 
-    // Choose a profile. "Pick items manually" asks for every phone/email/address category even
-    // where the profile's labels match, and remembers the answers for this contact.
-    const ManualChoice = "Pick items manually…"
-    @ProfileChoices: array
-    for ListedChoice in @ProfileNames {
-        @ProfileChoices += @ListedChoice
-    }
-    @ProfileChoices += ManualChoice
-    const ChosenProfileItem = chooseFromList(@ProfileChoices, "Profile")
-    @ChosenProfileName = "{ChosenProfileItem}"
+    // Use the profile named in the input when it exists. The name is checked against the list
+    // first because Get Dictionary Value fails on a missing key that contains ".".
+    @ChosenProfileName = ""
     @Manual = "no"
-    if @ChosenProfileName == ManualChoice {
-        @Manual = "yes"
-        const ManualProfileItem = chooseFromList(@ProfileNames, "Profile to start from")
-        @ChosenProfileName = "{ManualProfileItem}"
+    if @RequestedProfile != "" {
+        const KnownNamesText = joinText(@ProfileNames, "\n")
+        @KnownNames = "\n{KnownNamesText}\n"
+        if @KnownNames contains "\n{@RequestedProfile}\n" {
+            @ChosenProfileName = "{@RequestedProfile}"
+        }
+    }
+
+    // Otherwise choose one. "Pick items manually" asks for every phone/email/address category even
+    // where the profile's labels match, and remembers the answers for this contact.
+    if @ChosenProfileName == "" {
+        const ManualChoice = "Pick items manually…"
+        @ProfileChoices: array
+        for ListedChoice in @ProfileNames {
+            @ProfileChoices += @ListedChoice
+        }
+        @ProfileChoices += ManualChoice
+        const ChosenProfileItem = chooseFromList(@ProfileChoices, "Profile")
+        @ChosenProfileName = "{ChosenProfileItem}"
+        if @ChosenProfileName == ManualChoice {
+            @Manual = "yes"
+            const ManualProfileItem = chooseFromList(@ProfileNames, "Profile to start from")
+            @ChosenProfileName = "{ManualProfileItem}"
+        }
     }
     const ChosenProfileId = getValue(@ProfileIdFor, @ChosenProfileName)
     @ProfileId = "{ChosenProfileId}"

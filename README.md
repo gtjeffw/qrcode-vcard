@@ -50,6 +50,9 @@ included are determined by user-defined sharing profiles. It is written in
 
 2. Run the shortcut and select **Set your Identity**, then choose your own contact card.
 
+Run Set your Identity on the device you will use most; the shortcut's settings are created there. To
+use it on additional devices as well, see [Known limitations](#known-limitations).
+
 On first use, Shortcuts requests permission to read and write files in iCloud Drive and to save
 contact data to a file. Selecting **Always Allow** reduces subsequent prompts; see
 [Known limitations](#known-limitations).
@@ -124,6 +127,45 @@ the encoded QR code.
 
 <img src="docs/images/share-preview.png" width="260" alt="The export preview with OK and Cancel">
 
+## Quick access
+
+The shortcut can be started from any of the places iOS, iPadOS and macOS run shortcuts:
+
+| Method | Setup |
+|---|---|
+| Home Screen | In Shortcuts, touch and hold QR VCard Share, then select **Share** → **Add to Home Screen**. |
+| Widget | Add the **Shortcuts** widget to the Home Screen or Lock Screen and select QR VCard Share or a folder containing it. |
+| Control Center | Edit Control Center, select **Add a Control** → **Shortcut**, and select QR VCard Share. |
+| Action Button | On iPhone models with an Action Button: Settings → Action Button → **Shortcut** → QR VCard Share. |
+| Back Tap | Settings → Accessibility → Touch → Back Tap → Double Tap or Triple Tap → QR VCard Share. |
+| Siri | Say "QR VCard Share". |
+| Mac | In Shortcuts on the Mac, the shortcut's details offer **Pin in Menu Bar** and a keyboard shortcut. |
+
+Each of these opens the main menu.
+
+### Launching directly into a profile
+
+QR VCard Share accepts a text command as input that skips the main menu:
+
+| Input | Effect |
+|---|---|
+| `show:<profile>` | Displays the user's card with the named profile, e.g. `show:Business`. |
+| `share:<profile>` | Previews and exports the user's card with the named profile. |
+| `show-contact:<profile>` | Prompts for a contact, then displays it with the named profile. |
+| `share-contact:<profile>` | Prompts for a contact, then previews and exports it with the named profile. |
+
+The profile name must match exactly, including capitalization. If it is omitted (`show`) or does not
+match an existing profile, the profile list is shown instead. Without input, the shortcut opens the
+main menu.
+
+To create a one-tap launcher for a profile:
+
+1. In Shortcuts, create a new shortcut.
+2. Add a **Text** action containing the command, for example `show:Business`.
+3. Add a **Run Shortcut** action, select QR VCard Share, and set its input to the Text action.
+4. Rename the shortcut (for example "Business card") and assign it to the Home Screen, a widget,
+   Control Center, the Action Button, Back Tap or Siri as described above.
+
 ## Data storage and privacy
 
 The shortcut stores data only in the Shortcuts folder in the user's iCloud Drive, under `QRVCard/`,
@@ -148,6 +190,11 @@ should be regarded as obfuscation rather than encryption.
 - **iCloud Drive is required.** Without it the shortcut stops with "Location doesn't exist". The
   key-value storage actions introduced in iOS/macOS 27 may remove this requirement in a later
   version.
+- **Settings created on another device.** iCloud Drive can keep files written on one device as
+  online-only placeholders on another until they are opened, and Shortcuts does not download them:
+  the shortcut stops with "The file … couldn't be opened". Either use the shortcut mainly on one
+  device, or on each additional device open the Files app, go to iCloud Drive → Shortcuts, touch and
+  hold the **QRVCard** folder and select **Keep Downloaded** (iOS 18 and later).
 - **Identity is a snapshot.** Edits to the user's own contact card take effect after Set your
   Identity is run again.
 - **Repeated permission prompts.** Shortcuts may request permission to save contact data to a file

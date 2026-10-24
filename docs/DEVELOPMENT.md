@@ -68,7 +68,9 @@ The shortcut has a self-test mode: given the text `selftest` as input, it skips 
 file, runs the parsing, label matching and rendering on a made-up contact, and outputs the card
 image. `selftest-sparse` does the same for a card with only a name line and a mobile number, under a
 profile with missing keys. `selftest-burdell` and `selftest-doe` render the README's example cards.
-`src/selftest.cherri` lists what each should produce.
+`src/selftest.cherri` lists what each should produce. Inputs not starting with `selftest` are read as
+the quick-launch commands described in the README (`show:<profile>` and so on); anything else opens
+the main menu.
 
 ```bash
 printf selftest > selftest.txt
