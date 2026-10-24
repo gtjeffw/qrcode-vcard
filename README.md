@@ -5,8 +5,13 @@ display, or exports it as a `.vcf` file through the system share sheet. The fiel
 included are determined by user-defined sharing profiles. It is written in
 [Cherri](https://cherrilang.org) and compiled to a signed Shortcuts file.
 
-**Install:** [QR VCard Share on iCloud](https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181)
-(opens in the Shortcuts app on iPhone, iPad or Mac)
+<p align="center">
+  <a href="https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181">
+    <img alt="Get the shortcut" src="https://img.shields.io/badge/Get%20the%20shortcut-iCloud-F48024?style=for-the-badge&logo=apple&logoColor=white">
+  </a>
+  <br>
+  <sub>Opens in the Shortcuts app on iPhone, iPad or Mac</sub>
+</p>
 
 <p align="center">
   <img src="docs/images/card-burdell.png" width="300" alt="Example card for George P. Burdell under a Business profile: QR code above name, title, organization, work and mobile numbers and work email">
