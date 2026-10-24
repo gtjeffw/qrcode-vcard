@@ -31,6 +31,18 @@ uploading the shortcut to a third-party service (HubSign) when local signing fai
 you want for a shortcut that handles contact data, so don't run `cherri` on these files without
 `--skip-sign`.
 
+## Releasing
+
+The README's "Get the shortcut" button links to an iCloud share of the shortcut. A share link is a
+snapshot of the shortcut at the time it was shared, so each release needs a new one:
+
+1. Build with `scripts/build.sh`, delete the old QR VCard Share in Shortcuts, and add the new build.
+2. In Shortcuts, choose Share → Copy iCloud Link on it.
+3. Replace the link in README.md and push.
+
+The shared copy holds only the shortcut itself (including the made-up self-test contacts); nobody's
+`QRVCard/` settings travel with it.
+
 ## Layout
 
 | Path | |

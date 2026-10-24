@@ -3,9 +3,8 @@
 **Show your contact card as a QR code that anyone can scan with their phone's camera, or send it as a
 contact file, with exactly the details you choose.**
 
-<!-- TODO before release: replace INSERT-ICLOUD-LINK with the shortcut's public iCloud link. -->
 <p align="center">
-  <a href="https://www.icloud.com/shortcuts/INSERT-ICLOUD-LINK">
+  <a href="https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181">
     <img alt="Get the shortcut" src="https://img.shields.io/badge/Get%20the%20shortcut-iCloud-F48024?style=for-the-badge&logo=apple&logoColor=white">
   </a>
   <br>
