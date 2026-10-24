@@ -8,6 +8,7 @@
 #include 'actions/images'
 #include 'actions/sharing'
 #include 'actions/text'
+#include 'actions/web'
 
 // Show your own or any contact's details as a vCard QR code to scan, or share them with other
 // apps as a contact file. Sharing profiles choose the fields and, by label, which phone numbers,
@@ -28,6 +29,12 @@
 @Mode = ""
 // "identity" uses the saved identity; "pick" asks for a contact; "selftest" uses selftest.cherri.
 @Source = ""
+
+// Release identity. latest.json in the repository holds the newest released version and the iCloud
+// link to install it, so the shortcut never needs to know its own install link.
+const AppVersion = "1.0.0"
+const ProjectURL = "https://github.com/gtjeffw/qrcode-vcard"
+const LatestURL = "https://raw.githubusercontent.com/gtjeffw/qrcode-vcard/main/latest.json"
 @InputText = "{ShortcutInput}"
 if @InputText beginsWith "selftest" {
     @Mode = "selftest"
@@ -80,6 +87,46 @@ if @Mode == "" {
         item "Manage profiles":
             @Mode = "profiles"
             @Source = "identity"
+        item "About":
+            @Mode = "about"
+    }
+}
+
+if @Mode == "about" {
+    menu "QR VCard Share {AppVersion}" {
+        item "Check for updates":
+            // Fetched only when asked for; nothing else in the shortcut uses the network.
+            const LatestResponse = downloadURL(LatestURL)
+            const Latest = getDictionary(LatestResponse)
+            const LatestVersionValue = getValue(Latest, "version")
+            @LatestVersion = "{LatestVersionValue}"
+            if @LatestVersion == "" {
+                alert("Could not read the latest version from {ProjectURL}.", "Check for updates")
+                stop()
+            }
+            if @LatestVersion == AppVersion {
+                alert("You have the latest version, {AppVersion}.", "Check for updates")
+                stop()
+            }
+            const InstallLink = getValue(Latest, "install")
+            menu "Version {@LatestVersion} is available. You have {AppVersion}." {
+                item "Install update":
+                    // Shortcuts' Replace adds a second copy instead of replacing this one.
+                    alert("Add the new version, then delete this copy of QR VCard Share. Your profiles and settings are kept.", "Install update")
+                    openURL("{InstallLink}")
+                item "Not now":
+                    nothing()
+            }
+            stop()
+        item "Show project QR code":
+            @Mode = "projectqr"
+        item "Share project link":
+            const ProjectLink = url(ProjectURL)
+            share(ProjectLink)
+            stop()
+        item "Visit project site":
+            openURL(ProjectURL)
+            stop()
     }
 }
 
@@ -115,7 +162,14 @@ if @Source == "pick" {
 }
 
 #include 'vcard_parse.cherri'
-if @Mode != "selftest" {
+@NeedsProfile = "yes"
+if @Mode == "selftest" {
+    @NeedsProfile = "no"
+}
+if @Mode == "projectqr" {
+    @NeedsProfile = "no"
+}
+if @NeedsProfile == "yes" {
     #include 'profiles.cherri'
 
     if @Mode == "profiles" {
@@ -158,8 +212,14 @@ if @Mode != "selftest" {
     @UseCache = "yes"
 }
 
-#include 'select_lines.cherri'
-#include 'vcard_text.cherri'
+if @Mode == "projectqr" {
+    // The project page as a QR card, drawn by the same renderer as contact cards.
+    @VCardText = "{ProjectURL}"
+    @CardDetailsHTML = "<div><b>QR VCard Share</b></div>\n<div>{ProjectURL}</div>\n<div>Version {AppVersion}</div>\n"
+} else {
+    #include 'select_lines.cherri'
+    #include 'vcard_text.cherri'
+}
 
 if @Mode == "share" {
     // Show exactly what the .vcf holds before it can go anywhere; Cancel stops here.

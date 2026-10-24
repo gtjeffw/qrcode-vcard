@@ -36,9 +36,15 @@ you want for a shortcut that handles contact data, so don't run `cherri` on thes
 The README's "Get the shortcut" button links to an iCloud share of the shortcut. A share link is a
 snapshot of the shortcut at the time it was shared, so each release needs a new one:
 
-1. Build with `scripts/build.sh`, delete the old QR VCard Share in Shortcuts, and add the new build.
-2. In Shortcuts, choose Share → Copy iCloud Link on it.
-3. Replace the link in README.md and push.
+1. Set the new version in `AppVersion` in `src/qr_vcard_share.cherri`.
+2. Build with `scripts/build.sh`, delete the old QR VCard Share in Shortcuts, and add the new build.
+3. In Shortcuts, choose Share → Copy iCloud Link on it.
+4. Put the new version and link in `latest.json`, replace the link in README.md, and push.
+
+`latest.json` is what **About** → **Check for updates** reads, from
+`https://raw.githubusercontent.com/gtjeffw/qrcode-vcard/main/latest.json`. Installed copies compare
+its `version` with their own `AppVersion` and offer its `install` link when they differ, so update it
+only once the new link exists.
 
 The shared copy holds only the shortcut itself (including the made-up self-test contacts); nobody's
 `QRVCard/` settings travel with it.
@@ -57,6 +63,7 @@ The shared copy holds only the shortcut itself (including the made-up self-test 
 | `src/selftest.cherri` | Made-up contacts and profiles for the self-tests. |
 | `patches/cherri/` | Fixes to Cherri that this project needs (below); GPL-2.0, like Cherri. |
 | `docs/` | This file, and `images/` for the README. |
+| `latest.json` | Latest released version and its install link, read by Check for updates. |
 | `scripts/` | Cherri setup and the build. |
 
 The `src/` files other than the shortcut are pulled in with `#include`, which Cherri inlines as

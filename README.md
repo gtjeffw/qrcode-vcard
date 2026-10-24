@@ -6,7 +6,7 @@ included are determined by user-defined sharing profiles. It is written in
 [Cherri](https://cherrilang.org) and compiled to a signed Shortcuts file.
 
 <p align="center">
-  <a href="https://www.icloud.com/shortcuts/1d1f4fd12e604cc78eaccd6727e44b62">
+  <a href="https://www.icloud.com/shortcuts/80cc9f32e6ec485db5c23e4ede9d0aaf">
     <img alt="Get the shortcut" src="https://img.shields.io/badge/Get%20the%20shortcut-iCloud-F48024?style=for-the-badge&logo=apple&logoColor=white">
   </a>
   <br>
@@ -43,7 +43,7 @@ included are determined by user-defined sharing profiles. It is written in
 
 ## Installation
 
-1. Open the [iCloud link](https://www.icloud.com/shortcuts/1d1f4fd12e604cc78eaccd6727e44b62) on the
+1. Open the [iCloud link](https://www.icloud.com/shortcuts/80cc9f32e6ec485db5c23e4ede9d0aaf) on the
    target device and select **Add Shortcut**.
 
    <img src="docs/images/install.png" width="260" alt="The Shortcuts import screen for QR VCard Share">
@@ -73,6 +73,7 @@ contact data to a file. Selecting **Always Allow** reduces subsequent prompts; s
 | Share a contact's VCard | Previews, then exports a selected contact's card as a `.vcf` file. |
 | Set your Identity | Stores a copy of the user's own contact card. Re-run after editing that card. |
 | Manage profiles | Adds, edits, renames or deletes profiles. |
+| About | Shows the installed version and offers Check for updates, Show project QR code, Share project link and Visit project site. |
 
 ### Profiles
 
@@ -166,11 +167,27 @@ To create a one-tap launcher for a profile:
 4. Rename the shortcut (for example "Business card") and assign it to the Home Screen, a widget,
    Control Center, the Action Button, Back Tap or Siri as described above.
 
+## Updates
+
+The installed version is shown in the **About** menu. **About** → **Check for updates** compares it
+with the latest release listed in [latest.json](latest.json) in this repository and, if a newer
+version exists, offers to open its install link.
+
+Installed copies are independent of the published link: existing users keep their version until they
+install a new one. To update, add the new version, then delete the old copy (see
+[Known limitations](#known-limitations)). Profiles and settings in `QRVCard/` are kept. The
+shortcut's name does not change between versions, so launchers, widgets and Siri phrases that refer
+to it continue to work.
+
+**About** → **Show project QR code** displays this repository's URL as a QR code, for passing the
+project on in person.
+
 ## Data storage and privacy
 
 The shortcut stores data only in the Shortcuts folder in the user's iCloud Drive, under `QRVCard/`,
 which iCloud syncs across the user's devices. It sends contact data to other apps or people only
-when the user confirms an export.
+when the user confirms an export. The only network request it makes is **Check for updates**, which
+downloads `latest.json` from raw.githubusercontent.com and sends no user data.
 
 | Path | Contents |
 |---|---|
