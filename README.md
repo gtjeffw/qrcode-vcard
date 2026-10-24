@@ -6,7 +6,7 @@ included are determined by user-defined sharing profiles. It is written in
 [Cherri](https://cherrilang.org) and compiled to a signed Shortcuts file.
 
 <p align="center">
-  <a href="https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181">
+  <a href="https://www.icloud.com/shortcuts/1d1f4fd12e604cc78eaccd6727e44b62">
     <img alt="Get the shortcut" src="https://img.shields.io/badge/Get%20the%20shortcut-iCloud-F48024?style=for-the-badge&logo=apple&logoColor=white">
   </a>
   <br>
@@ -43,7 +43,7 @@ included are determined by user-defined sharing profiles. It is written in
 
 ## Installation
 
-1. Open the [iCloud link](https://www.icloud.com/shortcuts/4bae9d94f82543a5bc4630e4f55db181) on the
+1. Open the [iCloud link](https://www.icloud.com/shortcuts/1d1f4fd12e604cc78eaccd6727e44b62) on the
    target device and select **Add Shortcut**.
 
    <img src="docs/images/install.png" width="260" alt="The Shortcuts import screen for QR VCard Share">
