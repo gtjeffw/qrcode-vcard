@@ -31,6 +31,17 @@ uploading the shortcut to a third-party service (HubSign) when local signing fai
 you want for a shortcut that handles contact data, so don't run `cherri` on these files without
 `--skip-sign`.
 
+To try a change without touching the installed release, build a copy under another name, so it
+installs as a separate shortcut. It shares the release's `QRVCard/` settings:
+
+```bash
+cp -R src /tmp/testing-src && sed -i '' 's/^#define name .*/#define name QR VCard Testing/' /tmp/testing-src/qr_vcard_share.cherri
+```
+
+```bash
+scripts/build.sh /tmp/testing-src/qr_vcard_share.cherri
+```
+
 ## Releasing
 
 The README's "Get the shortcut" button links to an iCloud share of the shortcut. A share link is a
@@ -54,6 +65,7 @@ The shared copy holds only the shortcut itself (including the made-up self-test 
 | Path | |
 |---|---|
 | `src/qr_vcard_share.cherri` | The shortcut: menus, identity, choosing a profile, show and share. |
+| `src/identity_lookup.cherri` | Finds the saved identity's card in Contacts and uses it as it is now, saving it again when its name, emails or phones change. |
 | `src/vcard_parse.cherri` | Parses a contact's vCard text into fields and labelled phone/email/address lines. |
 | `src/profiles.cherri` | Loads the profiles, creating the starting set the first time. |
 | `src/profile_edit.cherri` | Adds, edits, renames and deletes profiles. |
@@ -102,17 +114,18 @@ yourself. When a run fails, the system log names each action and how many items 
 
 ## Cherri patches
 
-Built against Cherri `bcc0095` (v2.3.0 plus later fixes), with three patches. Each lives on its own
+Built against Cherri `bcc0095` (v2.3.0 plus later fixes), with four patches. Each lives on its own
 branch in the fork [gtjeffw/cherri](https://github.com/gtjeffw/cherri), based on upstream `main` and
 written to Cherri's contribution guidelines, so it can become a pull request later. The
-`qrcode-vcard` branch stacks all three, and `patches/cherri/` is generated from it
-(`git format-patch upstream/main..qrcode-vcard`).
+`qrcode-vcard` branch stacks all four, and `patches/cherri/` is generated from it
+(`git format-patch -o <repo>/patches/cherri bcc0095..qrcode-vcard`).
 
 | Branch | Fix |
 |---|---|
 | `fix-raw-action-assigned-identifier` | `const x = rawAction("id", {...})` compiled to `is.workflow.actions.rawaction`, which Shortcuts does not recognise. |
 | `fix-rich-text-input-attachment` | `getRichTextFromHTML()` and `getRichTextFromMarkdown()` wrapped a variable input in a text token string, and Shortcuts then produced no rich text. A literal string argument is still discarded, as before. |
 | `add-contact-email-phone-details` | Adds `Email Addresses` and `Phone Numbers` to the contact detail list. |
+| `add-find-contacts-filters` | Adds `findContacts("all" or "any", property, operator, value, ...)`, Find Contacts with filter conditions, which `filterContacts()` can't express (upstream #128). Property and operator are checked at compile time. |
 
 To move to a newer Cherri: rebase the branches onto the new upstream `main`, rebuild `qrcode-vcard`,
 regenerate the patches, and update the commit in `scripts/setup-cherri.sh`.
@@ -126,6 +139,7 @@ Candidates for further upstream issues or patches, worked around here for now:
 - Strings have no way to contain a literal `{` or `}`.
 - A shortcut whose first action is a multi-word Text action crashes Shortcuts' import dialog on
   macOS 26.7; the compiler could inject a harmless first action (needs testing which).
+- `splitText()` without a separator panics the compiler (in `textParts`); pass `"\n"`.
 - Output is not reproducible even with `--derive-uuids`: dictionary entries come out in Go's random
   map order.
 
@@ -144,8 +158,20 @@ Things that cost time here and are easy to trip over again:
   back to 600 px wide first. The QR code is at the top because iOS puts its Live Text button in an
   image's bottom corner.
 - **Reading a `.vcf`.** Shortcuts reads a `.vcf` file back as a contact, whose text is just the name.
-  Renaming it to `.txt` before Get Text gives the vCard text. A contact you pick only becomes vCard
-  text by way of a saved file.
+  Renaming it to `.txt` before Get Text gives the vCard text. Set Name on a contact from Find
+  Contacts works the same way in memory, with no file, and gives exactly what saving it would write.
+  A picked contact is still read through a saved file.
+- **Contact data and permission prompts.** Shortcuts asks before writing anything derived from a
+  contact to a file (even a hash of it), every time; Always Allow doesn't stick. Reading contacts and
+  files doesn't ask. So write contact data only when it has to: the identity is used straight from
+  Contacts, and its saved copy is replaced only when what identifies the card changes.
+- **Find Contacts filters.** Each condition's value sits under a key that depends on the property
+  (`Email` for Email Addresses, `Phone` for Phone Numbers, `String` otherwise); with the wrong key, or
+  an unknown property, Shortcuts silently drops the condition and matches everything. `findContacts()`
+  in the patched Cherri takes care of this. Phone numbers are stored as typed, so match a few
+  trailing digits with "contains" rather than the whole number.
+- **Linked cards.** Find Contacts returns each card of a set linked in Contacts on its own, and saving
+  one saves only that card. The contact picker returns the linked set as one merged card.
 - **Empty text counts as a value.** `if @x` is true for an empty text; compare with `!= ""` instead.
   But Replace Text on an *empty input* returns nothing at all, which doesn't equal `""`, so wrap a
   result as text (`@x = "{Result}"`) before comparing it.
@@ -156,6 +182,6 @@ Things that cost time here and are easy to trip over again:
 - **Cherri actions to avoid.** `overlayImage()` opens the image editor at runtime (use
   `customImageOverlay()`), and `combineImages()` compiles to an identifier Shortcuts does not have.
   `rawAction()` turns nested dictionaries into Shortcuts dictionary values, so contact filters can't
-  be expressed with it.
+  be expressed with it (use the patched `findContacts()`).
 - **Command-line runs.** `shortcuts run` can't show permission prompts, so run a shortcut once in the
   app to grant iCloud Drive access before running it from the terminal.

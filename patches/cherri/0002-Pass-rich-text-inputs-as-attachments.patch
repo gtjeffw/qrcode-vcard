@@ -1,7 +1,7 @@
 From 217e887d2ca5f5b482112f3c77f48a39def565e9 Mon Sep 17 00:00:00 2001
 From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
 Date: Sat, 24 Oct 2026 09:10:09 -0400
-Subject: [PATCH 2/3] Pass rich text inputs as attachments
+Subject: [PATCH 2/4] Pass rich text inputs as attachments
 
 getRichTextFromHTML() and getRichTextFromMarkdown() took a text
 parameter, so a variable input was wrapped in a WFTextTokenString, and

@@ -1,7 +1,7 @@
 From 9e03dab458f9e894d8da7b04287eec72f2231dac Mon Sep 17 00:00:00 2001
 From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
 Date: Sat, 24 Oct 2026 09:10:09 -0400
-Subject: [PATCH 3/3] Add Email Addresses and Phone Numbers contact details
+Subject: [PATCH 3/4] Add Email Addresses and Phone Numbers contact details
 
 Get Details of Contacts supports both properties, but the contactDetail
 enum did not list them. Add a compile-only test.

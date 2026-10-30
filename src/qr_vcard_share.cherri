@@ -13,7 +13,7 @@
 // Show your own or any contact's details as a vCard QR code to scan, or share them with other
 // apps as a contact file. Sharing profiles choose the fields and, by label, which phone numbers,
 // emails and addresses go in. Settings live in the Shortcuts folder under QRVCard/:
-//   identity.vcf              snapshot of your contact card (re-run "Set your Identity" after editing it)
+//   identity.vcf              your contact card, to find it in Contacts each run (identity_lookup.cherri)
 //   profiles/                 the sharing profiles (profiles.cherri)
 //   cache/<profile>/          hashed answers to earlier prompts, per contact (select_lines.cherri)
 
@@ -32,7 +32,7 @@
 
 // Release identity. latest.json in the repository holds the newest released version and the iCloud
 // link to install it, so the shortcut never needs to know its own install link.
-const AppVersion = "1.0.0"
+const AppVersion = "1.1.0"
 const ProjectURL = "https://github.com/gtjeffw/qrcode-vcard"
 const LatestURL = "https://raw.githubusercontent.com/gtjeffw/qrcode-vcard/main/latest.json"
 @InputText = "{ShortcutInput}"
@@ -111,8 +111,9 @@ if @Mode == "about" {
             const InstallLink = getValue(Latest, "install")
             menu "Version {@LatestVersion} is available. You have {AppVersion}." {
                 item "Install update":
-                    // Shortcuts' Replace adds a second copy instead of replacing this one.
-                    alert("Add the new version, then delete this copy of QR VCard Share. Your profiles and settings are kept.", "Install update")
+                    // Shortcuts' Replace adds a second copy instead of replacing this one, and adding the
+                    // new version while this one exists names it "QR VCard Share 1".
+                    alert("The new version opens next. Before adding it, delete this copy of QR VCard Share, so the new one keeps its name and your launchers keep working. Your profiles and settings are kept.", "Install update")
                     openURL("{InstallLink}")
                 item "Not now":
                     nothing()
@@ -141,6 +142,7 @@ if @Source == "identity" {
     if IdentityFile {
         const IdentityTextFile = setName(IdentityFile, "identity.txt")
         @SourceVCard = getText(IdentityTextFile)
+        #include 'identity_lookup.cherri'
     } else {
         // Managing profiles works without an identity; it just can't offer your custom labels.
         if @Mode != "profiles" {

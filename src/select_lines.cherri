@@ -12,8 +12,9 @@
 //
 // The cache holds, per profile and contact, the answers to earlier prompts. It never holds the
 // contact's details: contacts are keyed by a hash of their name line and answers are hashes of the
-// chosen lines. Each answer also records the selectors in force when it was given, so editing a
-// profile's labels for one category re-asks only that category.
+// chosen lines. Each answer also records the selectors in force when it was given, and a hash of
+// the category's entries at the time, so editing a profile's labels for one category, or adding,
+// removing or changing a contact's entries in it, re-asks only that category.
 
 const FieldsValue = getValue(@Profile, "fields")
 @Fields = "{FieldsValue}"
@@ -38,7 +39,7 @@ if @Fields contains ",birthday," {
 const ContactKey = hash(@VNameLine, "SHA256")
 @CachePath = "QRVCard/cache/{@ProfileId}/{ContactKey}.json"
 // Every key is always present, so reads never look up a missing key.
-@Cache = {"phone_sel": "-", "phone": ",", "email_sel": "-", "email": ",", "address_sel": "-", "address": ","}
+@Cache = {"phone_sel": "-", "phone_lines": "-", "phone": ",", "email_sel": "-", "email_lines": "-", "email": ",", "address_sel": "-", "address_lines": "-", "address": ","}
 if @UseCache == "yes" {
     // Get File fails when the folder is missing, even with errorIfNotFound off, so make sure the
     // profile's cache folder exists before the first read.
@@ -78,6 +79,8 @@ for Category in Categories {
 
     if @Wanted == "yes" {
         const CategoryLines = splitText(@CategoryLinesText, "\n")
+        const LinesHash = hash(@CategoryLinesText, "SHA256")
+        @LinesFingerprint = "{LinesHash}"
 
         if @Manual != "yes" {
             for CandidateLine in CategoryLines {
@@ -101,13 +104,16 @@ for Category in Categories {
             }
         }
 
-        // Nothing matched: reuse an earlier answer if the selectors haven't changed since.
+        // Nothing matched: reuse an earlier answer if neither the selectors nor the contact's
+        // entries in this category have changed since. Answers saved before entries were recorded
+        // have no "_lines" key, read as empty, and are asked again once.
         const MatchedCount = count(@Chosen)
         if MatchedCount == 0 {
             if @Manual != "yes" {
                 const CachedSelectors = getValue(@Cache, "{@Category}_sel")
-                @CachedSelectorsText = "{CachedSelectors}"
-                if @CachedSelectorsText == @Selectors {
+                const CachedLines = getValue(@Cache, "{@Category}_lines")
+                @CachedState = "{CachedSelectors}|{CachedLines}"
+                if @CachedState == "{@Selectors}|{@LinesFingerprint}" {
                     const CachedHashes = getValue(@Cache, @Category)
                     @CachedHashesText = "{CachedHashes}"
                     for CachedCandidate in CategoryLines {
@@ -138,6 +144,7 @@ for Category in Categories {
                 @PickedHashes += "{PickedHash},"
             }
             @NewCache = setValue(@NewCache, "{@Category}_sel", @Selectors)
+            @NewCache = setValue(@NewCache, "{@Category}_lines", @LinesFingerprint)
             @NewCache = setValue(@NewCache, @Category, @PickedHashes)
             @CacheChanged = "yes"
         }

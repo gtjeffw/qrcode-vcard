@@ -1,0 +1,167 @@
+// Finds the saved identity's card in Contacts, so edits made since "Set your Identity" are used.
+// The saved copy only identifies the card: by first and last name (or by full name when it lacks
+// one of them), and, when several cards have that name, by the first of its email addresses or
+// phone numbers (last four digits) that only one of them has. The card found is used as it is now,
+// and replaces the saved copy when its name, email addresses or phone numbers have changed. When no
+// single card is found, the user is asked to choose their card again rather than silently getting a
+// stale one. Only counts of the other cards are ever looked at.
+// Expects @SourceVCard to hold the saved copy; replaces it with the current card.
+
+const IdNoCR = replaceText('\r', '', @SourceVCard, true, true)
+const IdUnfolded = replaceText('\n[ \t]', '', IdNoCR, true, true)
+const IdNameMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?N[;:].*$', IdUnfolded)
+const IdNameMatch = getFirstItem(IdNameMatches)
+const IdNameValue = replaceText('^[^:]*:', '', "{IdNameMatch}", true, true)
+// N is "Last;First;Middle;Prefix;Suffix", with "\;" and "\," for literal characters.
+const IdLastRaw = replaceText('^((?:[^;\\]|\\.)*).*$', '$1', IdNameValue, true, true)
+const IdFirstRaw = replaceText('^(?:[^;\\]|\\.)*;?((?:[^;\\]|\\.)*).*$', '$1', IdNameValue, true, true)
+const IdLastName = replaceText('\\(.)', '$1', IdLastRaw, true, true)
+const IdFirstName = replaceText('\\(.)', '$1', IdFirstRaw, true, true)
+@IdLast = "{IdLastName}"
+@IdFirst = "{IdFirstName}"
+const IdFNMatches = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?FN[;:].*$', IdUnfolded)
+const IdFNMatch = getFirstItem(IdFNMatches)
+const IdFNValue = replaceText('^[^:]*:', '', "{IdFNMatch}", true, true)
+const IdFullName = replaceText('\\(.)', '$1', IdFNValue, true, true)
+@IdFull = "{IdFullName}"
+
+// "found", "missing" (no card has the name) or "ambiguous" (several do and nothing told them apart).
+@IdState = "missing"
+@IdFound: array
+@IdByParts = "no"
+if @IdFirst != "" {
+    if @IdLast != "" {
+        @IdByParts = "yes"
+    }
+}
+if @IdByParts == "yes" {
+    @IdFound = findContacts("all", "First Name", "is", "{@IdFirst}", "Last Name", "is", "{@IdLast}")
+} else {
+    if @IdFull != "" {
+        @IdFound = findContacts("all", "Name", "is", "{@IdFull}")
+    }
+}
+const IdNameCount = count(@IdFound)
+if IdNameCount == 1 {
+    @IdState = "found"
+}
+if IdNameCount > 1 {
+    @IdState = "ambiguous"
+    if @IdByParts == "yes" {
+        const IdEmailLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?EMAIL[;:].*$', IdUnfolded)
+        for IdEmailLine in IdEmailLines {
+            if @IdState == "ambiguous" {
+                const IdEmail = replaceText('^[^:]*:', '', @IdEmailLine, true, true)
+                const IdByEmail = findContacts("all", "First Name", "is", "{@IdFirst}", "Last Name", "is", "{@IdLast}", "Email Addresses", "is", "{IdEmail}")
+                const IdByEmailCount = count(IdByEmail)
+                if IdByEmailCount == 1 {
+                    @IdFound = IdByEmail
+                    @IdState = "found"
+                }
+            }
+        }
+        const IdPhoneLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?TEL[;:].*$', IdUnfolded)
+        for IdPhoneLine in IdPhoneLines {
+            if @IdState == "ambiguous" {
+                const IdPhone = replaceText('^[^:]*:', '', @IdPhoneLine, true, true)
+                const IdDigits = replaceText('\D', '', IdPhone, true, true)
+                // Contacts stores numbers as typed, so match the last four digits, which
+                // formatting rarely splits.
+                const IdTail = replaceText('^.*(\d{4})$', '$1', "{IdDigits}", true, true)
+                @IdPhoneTail = "{IdTail}"
+                if @IdPhoneTail != "" {
+                    const IdByPhone = findContacts("all", "First Name", "is", "{@IdFirst}", "Last Name", "is", "{@IdLast}", "Phone Numbers", "contains", "{@IdPhoneTail}")
+                    const IdByPhoneCount = count(IdByPhone)
+                    if IdByPhoneCount == 1 {
+                        @IdFound = IdByPhone
+                        @IdState = "found"
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The card found is read in memory, which needs no permission, and used as it is. Shortcuts asks
+// before writing anything taken from a contact to a file, every time, even after Always Allow, so
+// the saved copy is replaced only when what identifies the card changes: its name, email addresses
+// or phone numbers, compared without labels or formatting. Other edits are used without a save.
+const IdSavedKeyLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?(?:N|FN|EMAIL|TEL)[;:].*$', IdUnfolded)
+const IdSavedKeyJoined = joinText(IdSavedKeyLines, "\n")
+const IdSavedKeyNoGroup = replaceText('(?m)^[A-Za-z0-9-]+\.', '', "{IdSavedKeyJoined}", true, true)
+const IdSavedKeyNoParams = replaceText('(?m)^([A-Za-z]+);[^:\n]*:', '$1:', IdSavedKeyNoGroup, true, true)
+const IdSavedKeyBare = replaceText('[ ()-]', '', IdSavedKeyNoParams, true, true)
+const IdSavedKey = lowercase(IdSavedKeyBare)
+@IdSavedKeyText = "{IdSavedKey}"
+@IdChanged = "no"
+if @IdState == "found" {
+    const IdLiveContact = getFirstItem(@IdFound)
+    const IdLiveRenamed = setName(IdLiveContact, "identity.txt")
+    const IdLiveText = getText(IdLiveRenamed)
+    const IdLiveNoCR = replaceText('\r', '', IdLiveText, true, true)
+    const IdLiveUnfolded = replaceText('\n[ \t]', '', IdLiveNoCR, true, true)
+    const IdLiveKeyLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?(?:N|FN|EMAIL|TEL)[;:].*$', IdLiveUnfolded)
+    const IdLiveKeyJoined = joinText(IdLiveKeyLines, "\n")
+    const IdLiveKeyNoGroup = replaceText('(?m)^[A-Za-z0-9-]+\.', '', "{IdLiveKeyJoined}", true, true)
+    const IdLiveKeyNoParams = replaceText('(?m)^([A-Za-z]+);[^:\n]*:', '$1:', IdLiveKeyNoGroup, true, true)
+    const IdLiveKeyBare = replaceText('[ ()-]', '', IdLiveKeyNoParams, true, true)
+    const IdLiveKey = lowercase(IdLiveKeyBare)
+    @IdLiveKeyText = "{IdLiveKey}"
+    if @IdLiveKeyText != @IdSavedKeyText {
+        saveFile("QRVCard/identity.vcf", IdLiveContact, true)
+        @IdChanged = "yes"
+    }
+    @SourceVCard = "{IdLiveText}"
+} else {
+    @IdReason = "Your card, {@IdFull}, was not found in Contacts."
+    if @IdState == "ambiguous" {
+        @IdReason = "Several cards in Contacts are named {@IdFull}, and your email addresses and phone numbers don't tell them apart. Merging your duplicate cards into one in Contacts stops this question."
+    }
+    alert("{@IdReason} Choose your own card to continue; it will be used from now on.", "QR VCard Share")
+    const IdChosenContact = selectContact()
+    saveFile("QRVCard/identity.vcf", IdChosenContact, true)
+    const IdChosenFile = getFile("QRVCard/identity.vcf", nil, false)
+    const IdChosenTextFile = setName(IdChosenFile, "identity.txt")
+    @SourceVCard = getText(IdChosenTextFile)
+}
+// Find Contacts returns each card on its own, even cards linked into one in Contacts, so a card
+// that shares an email address or phone number with another card of the same name is most likely
+// half of the user's own: its other half is left out, and the user is told. Checked only when the
+// saved copy is replaced, so the extra searches don't slow every run.
+if @IdChanged == "yes" {
+    if IdNameCount > 1 {
+        @IdShared = "no"
+        const IdDupNoCR = replaceText('\r', '', @SourceVCard, true, true)
+        const IdDupUnfolded = replaceText('\n[ \t]', '', IdDupNoCR, true, true)
+        const IdDupEmailLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?EMAIL[;:].*$', IdDupUnfolded)
+        for IdDupEmailLine in IdDupEmailLines {
+            if @IdShared == "no" {
+                const IdDupEmail = replaceText('^[^:]*:', '', @IdDupEmailLine, true, true)
+                const IdSharedEmail = findContacts("all", "First Name", "is", "{@IdFirst}", "Last Name", "is", "{@IdLast}", "Email Addresses", "is", "{IdDupEmail}")
+                const IdSharedEmailCount = count(IdSharedEmail)
+                if IdSharedEmailCount > 1 {
+                    @IdShared = "yes"
+                }
+            }
+        }
+        const IdDupPhoneLines = matchText('(?m)^(?:[A-Za-z0-9-]+\.)?TEL[;:].*$', IdDupUnfolded)
+        for IdDupPhoneLine in IdDupPhoneLines {
+            if @IdShared == "no" {
+                const IdDupPhone = replaceText('^[^:]*:', '', @IdDupPhoneLine, true, true)
+                const IdDupDigits = replaceText('\D', '', IdDupPhone, true, true)
+                const IdDupTail = replaceText('^.*(\d{4})$', '$1', "{IdDupDigits}", true, true)
+                @IdDupPhoneTail = "{IdDupTail}"
+                if @IdDupPhoneTail != "" {
+                    const IdSharedPhone = findContacts("all", "First Name", "is", "{@IdFirst}", "Last Name", "is", "{@IdLast}", "Phone Numbers", "contains", "{@IdDupPhoneTail}")
+                    const IdSharedPhoneCount = count(IdSharedPhone)
+                    if IdSharedPhoneCount > 1 {
+                        @IdShared = "yes"
+                    }
+                }
+            }
+        }
+        if @IdShared == "yes" {
+            alert("Another card in Contacts named {@IdFull} shares an email address or phone number with yours, so it is probably also yours, or linked to yours. Only one of them is used here, so details only on the other are left out. Merging them into a single card fixes this.", "QR VCard Share")
+        }
+    }
+}

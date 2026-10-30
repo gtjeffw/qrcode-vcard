@@ -53,9 +53,9 @@ included are determined by user-defined sharing profiles. It is written in
 Run Set your Identity on the device you will use most; the shortcut's settings are created there. To
 use it on additional devices as well, see [Known limitations](#known-limitations).
 
-On first use, Shortcuts requests permission to read and write files in iCloud Drive and to save
-contact data to a file. Selecting **Always Allow** reduces subsequent prompts; see
-[Known limitations](#known-limitations).
+On first use, Shortcuts requests access to Contacts, permission to read and write files in iCloud
+Drive, and permission to save contact data to a file. Shortcuts asks again each time contact data is
+saved; see [Known limitations](#known-limitations).
 
 ## Usage
 
@@ -71,7 +71,7 @@ contact data to a file. Selecting **Always Allow** reduces subsequent prompts; s
 | Show a contact's QR VCard | Displays a selected contact's card as a QR code under the selected profile. |
 | Share my VCard | Previews, then exports the user's card as a `.vcf` file. |
 | Share a contact's VCard | Previews, then exports a selected contact's card as a `.vcf` file. |
-| Set your Identity | Stores a copy of the user's own contact card. Re-run after editing that card. |
+| Set your Identity | Selects the user's own contact card. Later edits to that card are picked up automatically; see [The user's own card](#the-users-own-card). |
 | Manage profiles | Adds, edits, renames or deletes profiles. |
 | About | Shows the installed version and offers Check for updates, Show project QR code, Share project link and Visit project site. |
 
@@ -115,10 +115,29 @@ For a given contact and profile:
   without a prompt.
 - **No match:** if the card has entries in a category but none match, the user selects the entries
   to include. The selection is retained for that contact and profile.
-- **Changed labels:** a retained selection is discarded for a category when that category's labels
-  are later changed in the profile, and the user is prompted again for that category only.
+- **Changed labels or entries:** a retained selection is discarded for a category when that
+  category's labels are changed in the profile, or when the contact's entries in that category are
+  added, removed or edited. The user is prompted again for that category only.
 - **Manual selection:** **Pick items manually…** in the profile list prompts for every category and
   replaces any retained selections.
+
+### The user's own card
+
+Set your Identity saves a copy of the selected card, which the shortcut uses to find that card in
+Contacts on each later run. The card is then read from Contacts as it is now, so edits made in
+Contacts are reflected without repeating Set your Identity:
+
+- The card is found by first and last name. If several cards have that name, the first of the
+  saved copy's email addresses, then phone numbers, that only one of them has decides.
+- If the card's name, email addresses or phone numbers have changed, the saved copy is replaced, so
+  the card can still be found next time, and Shortcuts asks for permission to save it. Other edits,
+  such as a new address, are used without saving anything or asking.
+- If no single card is found (the card was renamed or deleted, or duplicates cannot be told
+  apart), the user is asked to select their card again.
+- Contacts searches see linked cards (for example one from iCloud and one from an Exchange account)
+  separately, so only one of them is used. When the shortcut saves the card and another card with
+  the same name shares an email address or phone number with it, it warns that the other card's
+  details are left out.
 
 ### Export preview
 
@@ -174,10 +193,19 @@ with the latest release listed in [latest.json](latest.json) in this repository 
 version exists, offers to open its install link.
 
 Installed copies are independent of the published link: existing users keep their version until they
-install a new one. To update, add the new version, then delete the old copy (see
-[Known limitations](#known-limitations)). Profiles and settings in `QRVCard/` are kept. The
-shortcut's name does not change between versions, so launchers, widgets and Siri phrases that refer
-to it continue to work.
+install a new one. To update, delete the old copy first, then add the new version (see
+[Known limitations](#known-limitations)). Adding it while the old copy exists names it "QR VCard
+Share 1"; rename it to QR VCard Share after deleting the old copy. Profiles and settings in
+`QRVCard/` are kept. The shortcut's name does not change between versions, so launchers, widgets
+and Siri phrases that refer to it continue to work.
+
+Updating from 1.0.0 to 1.1.0:
+
+- Shortcuts requests access to Contacts once, because the user's card is now looked up there.
+- Retained selections are requested once more for each contact and profile, because 1.1.0 also
+  records which entries they were made for.
+- If the user's card is linked to another card in Contacts, only one of them is used from now on
+  (see [Known limitations](#known-limitations)).
 
 **About** → **Show project QR code** displays this repository's URL as a QR code, for passing the
 project on in person.
@@ -185,13 +213,14 @@ project on in person.
 ## Data storage and privacy
 
 The shortcut stores data only in the Shortcuts folder in the user's iCloud Drive, under `QRVCard/`,
-which iCloud syncs across the user's devices. It sends contact data to other apps or people only
+which iCloud syncs across the user's devices. To find the user's own card it searches Contacts for
+cards with the user's name; of any other cards found it uses only how many there are. It sends contact data to other apps or people only
 when the user confirms an export. The only network request it makes is **Check for updates**, which
 downloads `latest.json` from raw.githubusercontent.com and sends no user data.
 
 | Path | Contents |
 |---|---|
-| `identity.vcf` | Copy of the user's own contact card, written by Set your Identity. |
+| `identity.vcf` | Copy of the user's own contact card, used to find it in Contacts. Written by Set your Identity and whenever the card's name, email addresses or phone numbers change. |
 | `profiles/order.txt` | Profile identifiers, in menu order. |
 | `profiles/<id>.json` | One profile: name, categories and label selectors. |
 | `cache/<profile id>/<contact hash>.json` | Retained selections for one contact and profile. |
@@ -212,10 +241,16 @@ should be regarded as obfuscation rather than encryption.
   the shortcut stops with "The file … couldn't be opened". Either use the shortcut mainly on one
   device, or on each additional device open the Files app, go to iCloud Drive → Shortcuts, touch and
   hold the **QRVCard** folder and select **Keep Downloaded** (iOS 18 and later).
-- **Identity is a snapshot.** Edits to the user's own contact card take effect after Set your
-  Identity is run again.
-- **Repeated permission prompts.** Shortcuts may request permission to save contact data to a file
-  for each contact not previously processed, even after **Always Allow** is selected.
+- **Repeated permission prompts.** Shortcuts requests permission every time contact data, or
+  anything derived from it, is saved to a file, even after **Always Allow** is selected. The
+  shortcut saves only when needed: when the user's name, email addresses or phone numbers have
+  changed, when a new selection is
+  retained, and when a selected contact is read.
+- **Duplicate or linked cards.** If Contacts holds more than one card with the user's name, the
+  shortcut can only tell them apart by email addresses and phone numbers, and uses only one of them,
+  even when Contacts shows them linked as one. Combining them into a single card in Contacts
+  (on a Mac, select them and choose **Card** → **Merge Selected Cards**, or move the details by hand
+  and delete the extra card) avoids missing details and being asked to select the card again.
 
   <img src="docs/images/permission.png" width="240" alt="The Shortcuts prompt to save a contact to a file">
 

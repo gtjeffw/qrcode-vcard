@@ -1,0 +1,170 @@
+From fc886a6f273252a6b696907ecaad37c9fad78a1a Mon Sep 17 00:00:00 2001
+From: Jeffrey Wilson <1483241+gtjeffw@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 22:22:47 -0400
+Subject: [PATCH 4/4] Add findContacts() with filter conditions
+
+Find Contacts (filter.contacts) is most useful with its filter, which
+filterContacts() cannot express (#128). findContacts() takes "all" or
+"any" and then conditions as property, operator, value groups, and
+searches all contacts. Values may contain variables.
+
+The value is stored under a key that depends on the property: "Email"
+for Email Addresses, "Phone" for Phone Numbers, "String" otherwise, as
+in a filter built in the Shortcuts app. Shortcuts silently drops a
+condition with the wrong key or an unknown property, so both the
+property and the operator are checked at compile time.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ action.go                  |   1 +
+ actions_std.go             | 102 +++++++++++++++++++++++++++++++++++++
+ tests/find-contacts.cherri |   8 +++
+ 3 files changed, 111 insertions(+)
+ create mode 100644 tests/find-contacts.cherri
+
+diff --git a/action.go b/action.go
+index 3894a40..b2a66fc 100644
+--- a/action.go
++++ b/action.go
+@@ -104,6 +104,7 @@ var enumerations = map[string][]string{
+ 	"inputType":                     {"Text", "Number", "URL", "Date", "Time", "Date and Time"},
+ 	"appSplitRatio":                 {"half", "thirdByTwo"},
+ 	"sortOrder":                     {"asc", "desc"},
++	"filterMatch":                   {"all", "any"},
+ 	"windowSorting":                 {"Title", "App Name", "Width", "Height", "X Position", "Y Position", "Window Index", "Name", "Random"},
+ 	"fileLabel":                     {"red", "orange", "yellow", "green", "blue", "purple", "gray"},
+ 	"filesSortBy":                   {"File Size", "File Extension", "Creation Date", "File Path", "Last Modified Date", "Name", "Random"},
+diff --git a/actions_std.go b/actions_std.go
+index a1f6bb5..6cb9b83 100644
+--- a/actions_std.go
++++ b/actions_std.go
+@@ -237,6 +237,34 @@ var actions = map[string]*actionDefinition{
+ 			"operation": "Toggle",
+ 		},
+ 	},
++	"findContacts": {
++		doc: selfDoc{
++			title:       "Find Contacts",
++			description: "Find contacts matching all or any of the given conditions, each a property, an operator and a value.",
++			category:    "contacts",
++		},
++		identifier: "filter.contacts",
++		parameters: []parameterDefinition{
++			{
++				name:      "match",
++				validType: String,
++				enum:      "filterMatch",
++			},
++			{
++				name:      "conditions",
++				validType: String,
++				infinite:  true,
++			},
++		},
++		check: func(args []actionArgument, _ *actionDefinition) {
++			checkContentFilter(args[1:], contactFilterProperties)
++		},
++		makeParams: func(args []actionArgument) map[string]any {
++			return map[string]any{
++				"WFContentItemFilter": makeContentFilter(getArgValue(args[0]).(string), args[1:]),
++			}
++		},
++	},
+ 	"emailAddress": {
+ 		doc: selfDoc{
+ 			title:       "Email Address",
+@@ -2208,3 +2236,77 @@ func decompInfiniteURLAction(action *ShortcutAction) (arguments []string) {
+ 
+ 	return
+ }
++
++var contactFilterProperties = []string{
++	"Name", "First Name", "Middle Name", "Last Name", "Prefix", "Suffix", "Nickname",
++	"Phonetic First Name", "Phonetic Middle Name", "Phonetic Last Name",
++	"Company", "Job Title", "Department", "Email Addresses", "Phone Numbers",
++}
++
++var filterValueKeys = map[string]string{
++	"Email Addresses": "Email",
++	"Phone Numbers":   "Phone",
++}
++
++var filterOperators = map[string]int{
++	"is":               4,
++	"is not":           5,
++	"contains":         99,
++	"does not contain": 999,
++	"begins with":      8,
++	"ends with":        9,
++}
++
++func checkContentFilter(conditions []actionArgument, properties []string) {
++	if len(conditions) == 0 || len(conditions)%3 != 0 {
++		parserError("Conditions must be given in groups of three: a property, an operator and a value.")
++	}
++	for i := 0; i < len(conditions); i += 3 {
++		for _, literal := range conditions[i : i+2] {
++			if literal.valueType != String || strings.ContainsAny(literal.value.(string), "{}") {
++				parserError("A condition's property and operator must be literal text.")
++			}
++		}
++		var property = conditions[i].value.(string)
++		if !slices.Contains(properties, property) {
++			parserError(fmt.Sprintf("Unsupported filter property '%s'. Expected one of: %s.", property, strings.Join(properties, ", ")))
++		}
++		var operator = conditions[i+1].value.(string)
++		if _, found := filterOperators[operator]; !found {
++			parserError(fmt.Sprintf("Unknown filter operator '%s'. Expected one of: is, is not, contains, does not contain, begins with, ends with.", operator))
++		}
++	}
++}
++
++func makeContentFilter(match string, conditions []actionArgument) map[string]any {
++	var prefix = 0
++	if match == "all" {
++		prefix = 1
++	}
++	var templates = make([]map[string]any, 0, len(conditions)/3)
++	for i := 0; i < len(conditions); i += 3 {
++		var property = conditions[i].value.(string)
++		var valueKey, found = filterValueKeys[property]
++		if !found {
++			valueKey = "String"
++		}
++		templates = append(templates, map[string]any{
++			"Property":  property,
++			"Operator":  filterOperators[conditions[i+1].value.(string)],
++			"Removable": true,
++			"Values": map[string]any{
++				valueKey: paramValue(conditions[i+2], String),
++				"Unit":   4,
++			},
++		})
++	}
++
++	return map[string]any{
++		"Value": map[string]any{
++			"WFActionParameterFilterPrefix":    prefix,
++			"WFActionParameterFilterTemplates": templates,
++			"WFContentPredicateBoundedDate":    false,
++		},
++		"WFSerializationType": "WFContentPredicateTableTemplate",
++	}
++}
+diff --git a/tests/find-contacts.cherri b/tests/find-contacts.cherri
+new file mode 100644
+index 0000000..a70e6f5
+--- /dev/null
++++ b/tests/find-contacts.cherri
+@@ -0,0 +1,8 @@
++// compile-only: results depend on the contacts on the device
++
++const lastName = "Appleseed"
++const named = findContacts("all", "First Name", "is", "John", "Last Name", "is", "{lastName}")
++const either = findContacts("any", "Company", "contains", "Apple", "Email Addresses", "is", "john@example.com")
++const others = findContacts("all", "Name", "is not", "John Appleseed", "Job Title", "does not contain", "Engineer", "Nickname", "begins with", "J", "Phone Numbers", "ends with", "0100")
++
++show("✅ All tests passed")
+-- 
+2.50.1 (Apple Git-155)
+
